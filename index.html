@@ -113,6 +113,29 @@ nav .midc svg{width:22px;height:22px}
 .xb{background:none;border:0;color:#5b6270;font-size:14px;padding:2px 6px}
 .tot{display:flex;flex-wrap:wrap;gap:6px 16px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px;margin:10px 0}
 .tot b{font-size:17px}
+@media (min-width:900px){
+body{font-size:15px}
+.wrap{max-width:1280px;margin:0 0 0 232px;padding:28px 36px 48px}
+.topbar{position:fixed;left:0;top:0;width:232px;padding:22px 20px;z-index:11}
+.usr{display:none}
+nav{left:0;top:0;bottom:0;right:auto;width:232px;flex-direction:column;justify-content:flex-start;align-items:stretch;gap:4px;border-top:0;border-right:1px solid var(--line);padding:84px 12px 16px}
+nav button{flex:none;flex-direction:row;justify-content:flex-start;gap:12px;font-size:15px;padding:11px 12px;border-radius:10px}
+nav button:hover{background:#1a1e26;color:var(--tx)}
+nav button.on{background:#102418}
+nav button svg{width:22px;height:22px}
+nav button[data-tab=upload]{order:9;margin-top:14px;background:var(--ac);color:#06220f;font-weight:600;justify-content:center}
+nav button[data-tab=upload]:hover{background:#6ee79a;color:#06220f}
+nav .midc{width:auto;height:auto;margin:0;border:0;background:none}
+.bdg{position:static;margin-left:auto}
+#list{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px;align-items:start}
+#list .card{margin:0}
+.pg{display:inline-block;vertical-align:top;width:calc(50% - 12px);margin:12px 8px 12px 0}
+.g2{grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px}
+.lst{padding:22px 24px 20px}
+.field,.filters{max-width:720px}
+.toast{bottom:28px}
+#installBtn{display:none !important}
+}
 </style>
 </head>
 <body>
