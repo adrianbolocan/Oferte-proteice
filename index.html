@@ -4,6 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Oferte proteice</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0f1115">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
 <style>
 :root{--bg:#0f1115;--card:#181b22;--line:#262a33;--tx:#e8eaee;--mut:#8b919d;--ac:#4ade80;--am:#fbbf24;--rd:#f87171;--bl:#60a5fa}
 *{box-sizing:border-box}
@@ -70,6 +74,7 @@ nav button{padding:10px 2px !important;font-size:13px !important}
 <div class="wrap">
   <h1>Oferte proteice</h1>
   <div class="muted">Cataloage → proteină/calorii → preț real vs istoric</div>
+  <button class="btn" id="installBtn" style="display:none;margin-top:8px">⬇ Instalează aplicația</button>
   <div id="banner"></div>
   <nav id="nav">
     <button data-tab="offers" class="on">Oferte</button>
@@ -637,6 +642,11 @@ document.addEventListener('click', async e => {
     await write(() => col.doc(id).delete()); renderList();
   }
 });
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredPrompt = e; $('#installBtn').style.display = ''; });
+window.addEventListener('appinstalled', () => { $('#installBtn').style.display = 'none'; deferredPrompt = null; toast('Aplicație instalată'); });
+$('#installBtn').onclick = async () => { if (!deferredPrompt) return; deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt = null; $('#installBtn').style.display = 'none'; };
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 initDb();
 </script>
 </body>
