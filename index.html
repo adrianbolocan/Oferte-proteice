@@ -226,6 +226,7 @@ async function loadAll() {
   document.querySelector('#nav').style.display = '';
   if (!cfg.gkey) { S.tab = 'profile'; toast('Adaugă cheia Gemini în Profil'); }
   render();
+  if (cfg.gkey) resumePending();
 }
 async function upsertItem(it, store, date) {
   const name = String(it.name || it.canonical || '').trim();
@@ -451,10 +452,28 @@ async function processTextBatch(doc, fk, tp) {
     return 0;
   }
 }
+function idb() { return new Promise((res, rej) => { const r = indexedDB.open('oferte', 1); r.onupgradeneeded = () => r.result.createObjectStore('kv'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); }
+async function kv(op, key, val) {
+  try { const d = await idb(); return await new Promise((res, rej) => { const tx = d.transaction('kv', op === 'get' ? 'readonly' : 'readwrite'), st = tx.objectStore('kv');
+    const r = op === 'get' ? st.get(key) : op === 'del' ? st.delete(key) : st.put(val, key); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); } catch (e) { return null; }
+}
+let wakeLock = null;
+async function keepAwake(on) {
+  try { if (on && 'wakeLock' in navigator) { wakeLock = await navigator.wakeLock.request('screen'); } else if (!on && wakeLock) { await wakeLock.release(); wakeLock = null; } } catch (e) {}
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && S.busy && !wakeLock) keepAwake(true); });
+async function resumePending() {
+  const p = await kv('get', 'pending'); if (!p || !p.files || !p.files.length || S.busy) return;
+  S.files = p.files; S.uStore = p.store; S.uDate = p.date; S.uEnd = p.end; S.autoDate = p.auto;
+  S.tab = 'upload'; render(); toast('Reiau procesarea catalogului întreruptă');
+  runUpload();
+}
 async function runUpload() {
   if (S.busy || !S.files.length) return;
+  kv('put', 'pending', { files: S.files, store: S.uStore, date: S.uDate, end: S.uEnd, auto: S.autoDate });
+  keepAwake(true);
   S.busy = true; S.stop = false; S.log = []; S.prog = { done: 0, total: 0, start: Date.now(), found: 0 }; syncUploadBtn(); showProg();
-  if (!cfg.gkey || !cfg.model) { log('Adaugă cheia Gemini în Profil.'); S.busy = false; syncUploadBtn(); return; }
+  if (!cfg.gkey || !cfg.model) { log('Adaugă cheia Gemini în Profil.'); S.busy = false; keepAwake(false); syncUploadBtn(); return; }
   const tasks = [];
   for (const f of S.files) {
     try {
@@ -496,6 +515,8 @@ async function runUpload() {
   };
   await Promise.all(Array.from({ length: Math.min(PAR, tasks.length) }, worker));
   log(S.stop ? 'Oprit.' : 'Gata. ' + S.prog.found + ' produse.');
+  if (!S.stop || S.userStop) kv('del', 'pending');
+  S.userStop = false; keepAwake(false);
   S.busy = false; syncUploadBtn();
 }
 function syncUploadBtn() {
@@ -637,7 +658,7 @@ function viewUpload() {
   $('#uEnd').onchange = e => S.uEnd = e.target.value || addDays(S.uDate, 6);
   $('#uFiles').onchange = e => { S.files = [...e.target.files]; $('#fileInfo').textContent = S.files.map(f => f.name).join(', '); syncUploadBtn(); };
   $('#goBtn').onclick = runUpload;
-  $('#stopBtn').onclick = () => { S.stop = true; };
+  $('#stopBtn').onclick = () => { S.stop = true; S.userStop = true; };
   syncUploadBtn(); updUploadStats(); showProg();
 }
 function basketRows() {
