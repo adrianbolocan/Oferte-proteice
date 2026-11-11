@@ -92,6 +92,8 @@ nav button{padding:10px 2px !important;font-size:13px !important}
 const $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+const addDays = (d, n) => { const t = new Date(d + 'T12:00:00'); t.setDate(t.getDate() + n); return t.toISOString().slice(0, 10); };
+const fmtD = d => d ? d.slice(8, 10) + '.' + d.slice(5, 7) : '';
 const today = () => new Date().toISOString().slice(0, 10);
 const num = v => { const n = typeof v === 'string' ? parseFloat(v.replace(',', '.')) : v; return Number.isFinite(n) ? n : null; };
 const f1 = v => v == null ? '–' : (Math.round(v * 10) / 10).toString();
@@ -103,7 +105,7 @@ const DEF_PROFILE = { kcal: 2200, protein: 150, diet: 'omnivor', exclude: '', mi
 const SB_URL = 'https://senwituyejxxkkxukggn.supabase.co', SB_KEY = 'sb_publishable_1-IHJpTJGxPaSDcWg3x_Xg_mvDXeEMZ';
 let sb = null, col = null, uid = null, loaded = false, assets = null, cfg = { gkey: '', model: '' }, urlCache = {};
 let products = {}, pages = {}, profile = { ...DEF_PROFILE }, basket = [];
-let S = { cat: '', zoom: false, tab: 'offers', f: { sort: 'scor', store: '', q: '', promo: false }, open: {}, del: {}, log: [], recipes: '', suggest: '', busy: false, stop: false, files: [], uStore: 'Lidl', uDate: today(), uMax: 40 };
+let S = { cat: '', zoom: false, tab: 'offers', f: { sort: 'scor', store: '', q: '', promo: false }, open: {}, del: {}, log: [], recipes: '', suggest: '', busy: false, stop: false, files: [], uStore: 'Lidl', uDate: today(), uEnd: addDays(today(), 6) };
 
 let wq = Promise.resolve();
 function write(fn) {
@@ -236,7 +238,7 @@ async function upsertItem(it, store, date) {
   const w = num(it.weight_g), o = num(it.old_price);
   const ppk = w > 0 ? Math.round(p / w * 1000 * 100) / 100 : null;
   let hist = ((ex && ex.history) || []).filter(h => h.d !== date);
-  hist.push({ d: date, p, o: o && o > p ? o : null, ppk });
+  hist.push({ d: date, e: S.uEnd || null, p, o: o && o > p ? o : null, ppk });
   hist.sort((a, b) => a.d < b.d ? -1 : 1);
   const keep = ex && ex.edited;
   const doc = {
@@ -377,7 +379,7 @@ async function runUpload() {
       if (/pdf$/i.test(f.type) || /\.pdf$/i.test(f.name)) {
         await loadPdfjs();
         const doc = await window.pdfjsLib.getDocument({ data: await f.arrayBuffer() }).promise;
-        const n = Math.min(doc.numPages, S.uMax), fk = 'f' + runId + norm(f.name);
+        const n = doc.numPages, fk = 'f' + runId + norm(f.name);
         log(f.name + ': ' + doc.numPages + ' pagini, procesez ' + n);
         for (let i = 1; i <= n; i++) jobs.push({ label: f.name + ' p.' + i, fk, idx: i, get: async () => {
           const pg = await doc.getPage(i), v0 = pg.getViewport({ scale: 1 }), vp = pg.getViewport({ scale: 1300 / v0.width });
@@ -450,6 +452,12 @@ function badges(r) {
   if (r.x.est) b.push('<span class="b">nutriție estimată</span>');
   return b.join('');
 }
+function promoTag(x) {
+  const h = x.history[x.history.length - 1], end = h.e, now = today();
+  const st = end && end < now ? 'r' : (h.d > now ? 'bl' : 'g');
+  const lbl = end && end < now ? 'expirată' : (h.d > now ? 'începe curând' : 'activă');
+  return `<div style="margin:4px 0"><span class="b ${st}" style="font-size:13px">📅 ${fmtD(h.d)}${end ? '–' + fmtD(end) : ''} · ${lbl}</span></div>`;
+}
 function cardHtml(r) {
   const { x, c, id } = r, inB = basket.includes(id), open = S.open[id];
   const ed = open ? `<div class="ed">
@@ -461,7 +469,8 @@ function cardHtml(r) {
     <button class="btn sm rd" data-act="del">${S.del[id] ? 'Sigur? Apasă din nou' : 'Șterge produsul'}</button></div></div>` : '';
   return `<div class="card" data-id="${esc(id)}">
     <div class="top"><div class="nm">${esc(x.name)}</div><div class="pr">${f2(c.cur.p)} lei${c.cur.o ? `<s>${f2(c.cur.o)}</s>` : ''}</div></div>
-    <div class="sub">${esc(x.store)} · ${x.weight_g ? Math.round(x.weight_g) + ' g' : 'gramaj ?'}${c.cur.ppk != null ? ' · ' + f2(c.cur.ppk) + ' lei/kg' : ''} · ${esc(x.last)}</div>
+    <div class="sub">${esc(x.store)} · ${x.weight_g ? Math.round(x.weight_g) + ' g' : 'gramaj ?'}${c.cur.ppk != null ? ' · ' + f2(c.cur.ppk) + ' lei/kg' : ''}</div>
+    ${promoTag(x)}
     <div class="mx"><span><b>${f1(c.dens)}</b> g prot / 100 kcal</span><span><b>${f1(x.protein100)}</b> g/100 g</span><span><b>${f2(c.cost30)}</b> lei / 30 g prot</span></div>
     <div class="bd">${badges(r)}</div>
     <div class="acts"><button class="btn sm ${inB ? 'sec' : ''}" data-act="basket">${inB ? 'În coș ✓' : '+ Coș'}</button><button class="btn sm sec" data-act="edit">${open ? 'Închide' : 'Editează'}</button></div>${ed}</div>`;
@@ -498,7 +507,7 @@ function pageHtml(p, n, total) {
     items.filter(i => i.b).map(i => plusBtn(i.id, 'plus', `style="left:${i.b[2] * 100}%;top:${i.b[1] * 100}%" title="${esc(products[i.id].name)}"`)).join('')}</div></div>` : '';
   const list = items.map(i => {
     const x = products[i.id], c = calc(x);
-    return `<div class="li"><div><div class="nm">${esc(x.name)}</div><div class="sub">${f2(c.cur.p)} lei${c.cur.o ? ' (era ' + f2(c.cur.o) + ')' : ''} · ${f1(c.dens)} g prot/100 kcal · ${f2(c.cost30)} lei/30 g prot</div></div>${plusBtn(i.id, 'plus2')}</div>`;
+    return `<div class="li"><div><div class="nm">${esc(x.name)}</div>${promoTag(x)}<div class="sub">${f2(c.cur.p)} lei${c.cur.o ? ' (era ' + f2(c.cur.o) + ')' : ''} · ${f1(c.dens)} g prot/100 kcal · ${f2(c.cost30)} lei/30 g prot</div></div>${plusBtn(i.id, 'plus2')}</div>`;
   }).join('');
   return `<div class="pg"><div class="muted">Pagina ${n}/${total}</div>${img}<details${p.asset ? '' : ' open'}><summary class="muted">Produse (${items.length})</summary>${list}</details></div>`;
 }
@@ -520,17 +529,17 @@ function syncBasketBtns(id) {
 }
 function viewUpload() {
   $('#main').innerHTML = `<div class="field"><label>Magazin</label><select id="uStore">${STORES.map(s => `<option ${s === S.uStore ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
-  <div class="field"><label>Data de început a catalogului</label><input type="date" id="uDate" value="${esc(S.uDate)}"></div>
+  <div class="row"><div class="field" style="flex:1"><label>Promoția începe</label><input type="date" id="uDate" value="${esc(S.uDate)}"></div>
+  <div class="field" style="flex:1"><label>Promoția se termină</label><input type="date" id="uEnd" value="${esc(S.uEnd)}"></div></div>
   <div class="field"><label>Fișiere (PDF sau capturi de ecran / poze)</label><input type="file" id="uFiles" multiple accept="image/*,application/pdf"></div>
-  <div class="field"><label>Maxim pagini procesate dintr-un PDF</label><input type="number" id="uMax" min="1" max="120" value="${S.uMax}"></div>
   <div class="muted" id="fileInfo">${S.files.length ? S.files.map(f => esc(f.name)).join(', ') : ''}</div>
   <div class="row"><button class="btn" id="goBtn">Analizează catalogul</button><button class="btn sec" id="stopBtn" style="display:none">Stop</button></div>
   <div id="prog"></div>
   <div class="muted" id="ustats"></div>
   <div id="log">${esc(S.log.join('\n'))}</div>`;
   $('#uStore').onchange = e => S.uStore = e.target.value;
-  $('#uDate').onchange = e => S.uDate = e.target.value || today();
-  $('#uMax').onchange = e => S.uMax = Math.max(1, +e.target.value || 40);
+  $('#uDate').onchange = e => { S.uDate = e.target.value || today(); S.uEnd = addDays(S.uDate, 6); $('#uEnd').value = S.uEnd; };
+  $('#uEnd').onchange = e => S.uEnd = e.target.value || addDays(S.uDate, 6);
   $('#uFiles').onchange = e => { S.files = [...e.target.files]; $('#fileInfo').textContent = S.files.map(f => f.name).join(', '); syncUploadBtn(); };
   $('#goBtn').onclick = runUpload;
   $('#stopBtn').onclick = () => { S.stop = true; };
