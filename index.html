@@ -266,7 +266,7 @@ function boxOf(b) {
 const GBASE = 'https://generativelanguage.googleapis.com/v1beta/';
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 function blobB64(blob) { return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1]); r.onerror = rej; r.readAsDataURL(blob); }); }
-async function ask(prompt, images) {
+async function ask(prompt, images, onWait) {
   if (!cfg.gkey || !cfg.model) { const e = new Error('Lipsește cheia Gemini sau modelul (Profil)'); e.code = 'not_granted'; throw e; }
   const parts = [];
   for (const b of (images || [])) parts.push({ inline_data: { mime_type: 'image/jpeg', data: await blobB64(b) } });
@@ -281,7 +281,7 @@ async function ask(prompt, images) {
       if (r.status === 429 && /per day|PerDay/i.test(msg)) { const e = new Error('Limita zilnică Gemini atinsă. Reia mâine.'); e.code = 'rate_limited'; throw e; }
       let w = 15000 * (t + 1);
       const ri = ((j.error && j.error.details) || []).find(d => d.retryDelay); if (ri) w = (parseFloat(ri.retryDelay) || 15) * 1000 + 500;
-      await sleep(w); continue;
+      if (onWait) onWait(Math.round(w / 1000)); await sleep(w); continue;
     }
     const e = new Error(msg); e.code = r.status === 429 ? 'rate_limited' : 'http'; throw e;
   }
@@ -309,12 +309,13 @@ Răspunde STRICT cu un array JSON, fără alt text. Fiecare element:
 {"name":"denumirea completă din catalog","canonical":"denumire generică scurtă, fără brand și gramaj (ex: piept de pui, iaurt grecesc, ouă M, ton în ulei)","brand":"brand sau ''","weight_g":greutatea netă a ambalajului în grame (litri ×1000; pentru ouă estimează 60 g/ou; null dacă nu poți),"price":prețul promoțional curent în lei,"old_price":prețul vechi/barat sau null,"kcal100":kcal la 100 g (estimare pentru acel tip de produs),"protein100":proteină g/100 g,"fat100":grăsime g/100 g,"tags":[din: "carne","pește","lactate","ouă","vegetal"],"est":true,"box_2d":[ymin,xmin,ymax,xmax]}
 "box_2d" = chenarul produsului pe imagine (cu tot cu preț), în formatul standard [ymin, xmin, ymax, xmax] normalizat 0–1000.
 Reguli: preț cu punct zecimal (în catalog apare adesea ca "5" mare și "99" mic = 5.99). Dacă prețul e per kg fără ambalaj fix: weight_g=1000 și price=prețul/kg. Pentru oferte gen "2+1" sau "-50% la al doilea", dacă e clar folosește prețul efectiv per bucată. Dacă pagina nu are produse alimentare: [].`;
+const batchNote = n => n > 1 ? `\nATENȚIE: primești ${n} imagini = ${n} pagini, numerotate 1..${n} în ordinea primirii. Pune la fiecare produs câmpul "page" cu numărul imaginii pe care apare; box_2d e relativ la acea imagine. Returnează un singur array cu produsele din toate paginile.` : '';
 
 /* ---------- imagini / pdf ---------- */
 async function toBlob(canvas) { return new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.82)); }
 async function imgBlob(file) {
   const bmp = await createImageBitmap(file);
-  const sc = Math.min(1, 1800 / Math.max(bmp.width, bmp.height));
+  const sc = Math.min(1, 1500 / Math.max(bmp.width, bmp.height));
   const c = document.createElement('canvas'); c.width = Math.round(bmp.width * sc); c.height = Math.round(bmp.height * sc);
   c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
   return toBlob(c);
@@ -339,31 +340,33 @@ function showProg() {
   el.innerHTML = `<div class="bar"><div style="width:${pct}%"></div></div><div class="muted">${P.done}/${P.total} pagini · ${pct}%${eta}${P.found ? ' · ' + P.found + ' produse' : ''}</div>`;
 }
 
-async function processBlob(blob, label, fk, idx) {
+async function processBatch(js) {
+  const label = js.length > 1 ? js[0].label + ' … ' + js[js.length - 1].label : js[0].label;
   const li = S.log.push('… ' + label) - 1; showLog();
   try {
-    const arr = parseJson(await ask(extractPrompt(S.uStore), [blob]));
-    let c = 0, note = ''; const its = [];
+    const blobs = await Promise.all(js.map(j => j.get()));
+    const arr = parseJson(await ask(extractPrompt(S.uStore) + batchNote(js.length), blobs, s => { S.log[li] = '⏳ ' + label + ': limită Gemini, aștept ' + s + ' s'; showLog(); }));
+    const per = js.map(() => []); let c = 0, note = '';
     for (const it of (Array.isArray(arr) ? arr : [])) {
+      const k = js.length > 1 ? Math.min(js.length, Math.max(1, parseInt(it.page) || 1)) - 1 : 0;
       const id = await upsertItem(it, S.uStore, S.uDate);
-      if (id) { c++; const g = it.box_2d; its.push({ id, b: boxOf(Array.isArray(g) && g.length === 4 ? [g[1], g[0], g[3], g[2]] : it.box) }); }
+      if (id) { c++; const g = it.box_2d; per[k].push({ id, b: boxOf(Array.isArray(g) && g.length === 4 ? [g[1], g[0], g[3], g[2]] : it.box) }); }
     }
-    if (its.length) {
+    await Promise.all(js.map(async (j, k) => {
+      if (!per[k].length) return;
       let asset = null;
-      try { asset = await uploadPage(blob, S.uStore + '-' + S.uDate + '-' + fk + '-' + idx); } catch (e) { note = ' (imaginea nu s-a salvat: ' + (e.message || e.code) + ')'; }
-      const pid = 'c_' + norm(S.uStore + '-' + S.uDate + '-' + fk + '-' + idx).slice(0, 150);
-      const pd = { store: S.uStore, date: S.uDate, fk, idx, asset, items: its };
+      try { asset = await uploadPage(blobs[k], S.uStore + '-' + S.uDate + '-' + j.fk + '-' + j.idx); } catch (e) { note = ' (imagini nesalvate: ' + (e.message || e.code) + ')'; }
+      const pid = 'c_' + norm(S.uStore + '-' + S.uDate + '-' + j.fk + '-' + j.idx).slice(0, 150);
+      const pd = { store: S.uStore, date: S.uDate, fk: j.fk, idx: j.idx, asset, items: per[k] };
       pages[pid] = pd; await write(() => col.doc(pid).set(pd));
-    }
-    S.log[li] = '✓ ' + label + ': ' + c + ' produse' + note;
-    showLog(); return c;
+    }));
+    S.log[li] = '✓ ' + label + ': ' + c + ' produse' + note; showLog(); return c;
   } catch (e) {
-    S.log[li] = '✗ ' + label + ': ' + ((e && (e.message || e.code)) || 'eroare');
-    showLog();
-    if (e && (e.code === 'rate_limited' || e.code === 'not_granted')) { S.stop = true; log('Oprit (' + e.code + '). Reia mai târziu.'); }
+    S.log[li] = '✗ ' + label + ': ' + ((e && (e.message || e.code)) || 'eroare'); showLog();
+    if (e && (e.code === 'rate_limited' || e.code === 'not_granted')) { S.stop = true; log('Oprit: ' + (e.message || e.code)); }
   }
 }
-const PAR = 3;
+const PAR = 2, BATCH = 4;
 async function runUpload() {
   if (S.busy || !S.files.length) return;
   S.busy = true; S.stop = false; S.log = []; S.prog = { done: 0, total: 0, start: Date.now(), found: 0 }; syncUploadBtn(); showProg();
@@ -377,7 +380,7 @@ async function runUpload() {
         const n = Math.min(doc.numPages, S.uMax), fk = 'f' + runId + norm(f.name);
         log(f.name + ': ' + doc.numPages + ' pagini, procesez ' + n);
         for (let i = 1; i <= n; i++) jobs.push({ label: f.name + ' p.' + i, fk, idx: i, get: async () => {
-          const pg = await doc.getPage(i), v0 = pg.getViewport({ scale: 1 }), vp = pg.getViewport({ scale: 1600 / v0.width });
+          const pg = await doc.getPage(i), v0 = pg.getViewport({ scale: 1 }), vp = pg.getViewport({ scale: 1300 / v0.width });
           const c = document.createElement('canvas'); c.width = vp.width; c.height = vp.height;
           await pg.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
           return toBlob(c);
@@ -386,16 +389,17 @@ async function runUpload() {
     } catch (e) { log('✗ ' + f.name + ': ' + (e.message || e.code)); }
   }
   S.prog.total = jobs.length; S.prog.start = Date.now(); showProg();
+  const batches = []; for (let i = 0; i < jobs.length; i += BATCH) batches.push(jobs.slice(i, i + BATCH));
   let next = 0;
   const worker = async () => {
-    while (!S.stop && next < jobs.length) {
-      const j = jobs[next++];
-      try { const n = await processBlob(await j.get(), j.label, j.fk, j.idx); S.prog.found += n || 0; }
-      catch (e) { log('✗ ' + j.label + ': ' + (e.message || e.code)); }
-      S.prog.done++; showProg();
+    while (!S.stop && next < batches.length) {
+      const bt = batches[next++];
+      try { const n = await processBatch(bt); S.prog.found += n || 0; }
+      catch (e) { log('✗ ' + bt[0].label + ': ' + (e.message || e.code)); }
+      S.prog.done += bt.length; showProg();
     }
   };
-  await Promise.all(Array.from({ length: Math.min(PAR, jobs.length) }, worker));
+  await Promise.all(Array.from({ length: Math.min(PAR, batches.length) }, worker));
   log(S.stop ? 'Oprit.' : 'Gata.');
   S.busy = false; syncUploadBtn();
 }
