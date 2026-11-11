@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Oferte proteice</title>
+<style>
+:root{--bg:#0f1115;--card:#181b22;--line:#262a33;--tx:#e8eaee;--mut:#8b919d;--ac:#4ade80;--am:#fbbf24;--rd:#f87171;--bl:#60a5fa}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+.wrap{max-width:720px;margin:0 auto;padding:14px 12px 80px}
+h1{font-size:19px;margin:4px 0 2px}
+.muted{color:var(--mut);font-size:13px}
+nav{display:flex;gap:6px;margin:12px 0;position:sticky;top:0;background:var(--bg);padding:6px 0;z-index:5}
+nav button{flex:1;background:var(--card);color:var(--mut);border:1px solid var(--line);border-radius:10px;padding:10px 4px;font-size:14px}
+nav button.on{color:var(--bg);background:var(--ac);border-color:var(--ac);font-weight:600}
+input,select,textarea{background:var(--card);color:var(--tx);border:1px solid var(--line);border-radius:8px;padding:9px;font-size:15px;max-width:100%}
+button{font:inherit;cursor:pointer}
+.btn{background:var(--ac);color:#06220f;border:0;border-radius:9px;padding:10px 14px;font-weight:600}
+.btn.sec{background:var(--card);color:var(--tx);border:1px solid var(--line);font-weight:500}
+.btn.sm{padding:6px 10px;font-size:13px}
+.btn.rd{background:#3a1d1d;color:var(--rd);border:1px solid #5a2a2a}
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px}
+.filters input[type=text],.filters input:not([type]){flex:1;min-width:120px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin:10px 0}
+.top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.nm{font-weight:600}
+.pr{text-align:right;white-space:nowrap;font-weight:700;font-size:17px}
+.pr s{color:var(--mut);font-weight:400;font-size:13px;margin-left:4px}
+.sub{color:var(--mut);font-size:13px;margin-top:2px}
+.mx{display:flex;flex-wrap:wrap;gap:6px 14px;margin:8px 0;font-size:13px;color:var(--mut)}
+.mx b{color:var(--tx);font-size:15px}
+.bd{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.b{font-size:12px;border-radius:99px;padding:2px 9px;border:1px solid var(--line);color:var(--mut)}
+.b.g{color:var(--ac);border-color:#1f5a35;background:#102418}
+.b.a{color:var(--am);border-color:#5a4513;background:#241d0d}
+.b.r{color:var(--rd);border-color:#5a2a2a;background:#241212}
+.b.bl{color:var(--bl);border-color:#1e3a5f;background:#0f1a2a}
+.acts{display:flex;gap:8px;flex-wrap:wrap}
+.ed{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.ed label{font-size:12px;color:var(--mut);display:block}
+.ed input{width:100%}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:8px 0}
+.field{margin:10px 0}
+.field label{display:block;font-size:13px;color:var(--mut);margin-bottom:4px}
+.field input,.field select{width:100%}
+#log{font-size:13px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px;margin-top:10px;max-height:300px;overflow:auto;white-space:pre-wrap}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#222833;border:1px solid var(--line);padding:10px 14px;border-radius:10px;z-index:20;max-width:90%}
+.warn{background:#241d0d;border:1px solid #5a4513;color:var(--am);border-radius:10px;padding:10px;margin:8px 0;font-size:13px}
+.recipe{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin:10px 0}
+.recipe h3{margin:0 0 4px;font-size:16px}
+.recipe ul,.recipe ol{margin:6px 0;padding-left:20px}
+.pg{margin:16px 0}
+.pgscroll{overflow-x:auto;border:1px solid var(--line);border-radius:10px;margin:6px 0}
+.pgimg{position:relative;width:100%}
+.pgimg.z{width:220%}
+.pgimg img{display:block;width:100%;height:auto}
+.plus,.plus2{width:34px;height:34px;border-radius:50%;border:2px solid #fff;background:rgba(15,17,21,.88);color:#fff;font-size:20px;line-height:1;padding:0;flex:none}
+.plus{position:absolute;transform:translate(-100%,0)}
+.plus.on,.plus2.on{background:var(--ac);color:#06220f;border-color:var(--ac)}
+.li{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
+nav button{padding:10px 2px !important;font-size:13px !important}
+.bar{height:10px;background:var(--line);border-radius:99px;overflow:hidden;margin:10px 0 4px}
+.bar div{height:100%;background:var(--ac);transition:width .3s}
+.tot{display:flex;flex-wrap:wrap;gap:6px 16px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px;margin:10px 0}
+.tot b{font-size:17px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Oferte proteice</h1>
+  <div class="muted">Cataloage → proteină/calorii → preț real vs istoric</div>
+  <div id="banner"></div>
+  <nav id="nav">
+    <button data-tab="offers" class="on">Oferte</button>
+    <button data-tab="catalog">Catalog</button>
+    <button data-tab="upload">Încarcă</button>
+    <button data-tab="basket">Coș</button>
+    <button data-tab="profile">Profil</button>
+  </nav>
+  <div id="main"></div>
+</div>
+<div id="toastbox"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+const today = () => new Date().toISOString().slice(0, 10);
+const num = v => { const n = typeof v === 'string' ? parseFloat(v.replace(',', '.')) : v; return Number.isFinite(n) ? n : null; };
+const f1 = v => v == null ? '–' : (Math.round(v * 10) / 10).toString();
+const f2 = v => v == null ? '–' : v.toFixed(2);
+const median = a => { const s = [...a].sort((x, y) => x - y), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+const STORES = ['Lidl', 'Kaufland', 'Carrefour', 'Penny', 'Profi', 'Auchan', 'Mega Image', 'Altul'];
+const DEF_PROFILE = { kcal: 2200, protein: 150, diet: 'omnivor', exclude: '', minDensity: 6, budget: 250, days: 7 };
+
+const SB_URL = 'https://senwituyejxxkkxukggn.supabase.co', SB_KEY = 'sb_publishable_1-IHJpTJGxPaSDcWg3x_Xg_mvDXeEMZ';
+let sb = null, col = null, uid = null, loaded = false, assets = null, cfg = { gkey: '', model: '' }, urlCache = {};
+let products = {}, pages = {}, profile = { ...DEF_PROFILE }, basket = [];
+let S = { cat: '', zoom: false, tab: 'offers', f: { sort: 'scor', store: '', q: '', promo: false }, open: {}, del: {}, log: [], recipes: '', suggest: '', busy: false, stop: false, files: [], uStore: 'Lidl', uDate: today(), uMax: 40 };
+
+let wq = Promise.resolve();
+function write(fn) {
+  if (!col) return Promise.resolve();
+  wq = wq.then(fn).catch(e => { console.error(e); toast('Eroare salvare: ' + ((e && (e.message || e.code)) || '')); });
+  return wq;
+}
+function toast(msg) {
+  const d = document.createElement('div'); d.className = 'toast'; d.textContent = msg;
+  $('#toastbox').appendChild(d); setTimeout(() => d.remove(), 3500);
+}
+
+/* ---------- calcule ---------- */
+function calc(x) {
+  const h = x.history, cur = h[h.length - 1], prior = h.slice(0, -1);
+  const w = x.weight_g, k = x.kcal100, pr = x.protein100;
+  const dens = (k > 0 && pr != null) ? pr / k * 100 : null;
+  const protPack = (w && pr != null) ? w * pr / 100 : null;
+  const cost30 = protPack > 0 ? cur.p / protPack * 30 : null;
+  const useK = cur.ppk != null;
+  const cv = useK ? cur.ppk : cur.p;
+  const pv = prior.map(e => useK ? e.ppk : e.p).filter(v => v != null);
+  let real = null, med = null, low = false;
+  if (pv.length && cv != null) { med = median(pv); real = (med - cv) / med * 100; low = pv.length >= 2 && cv <= Math.min(...pv); }
+  const claimed = cur.o && cur.o > cur.p ? (cur.o - cur.p) / cur.o * 100 : null;
+  const kcalPack = (w && k != null) ? w * k / 100 : null;
+  return { cur, dens, protPack, cost30, real, med, n: pv.length, low, claimed, kcalPack };
+}
+function activeRows() {
+  const latest = {};
+  for (const x of Object.values(products)) if (!latest[x.store] || x.last > latest[x.store]) latest[x.store] = x.last;
+  return Object.entries(products)
+    .filter(([, x]) => x.history && x.history.length && x.last === latest[x.store])
+    .map(([id, x]) => ({ id, x, c: calc(x) }));
+}
+function dietOk(x) {
+  const t = x.tags || [];
+  if (profile.diet === 'vegetarian') return !t.includes('carne') && !t.includes('pește');
+  if (profile.diet === 'pescetarian') return !t.includes('carne');
+  if (profile.diet === 'vegan') return !t.includes('carne') && !t.includes('pește') && !t.includes('lactate') && !t.includes('ouă');
+  return true;
+}
+function exclOk(x) {
+  const ws = String(profile.exclude || '').split(',').map(s => norm(s)).filter(Boolean);
+  const n = norm(x.name + ' ' + (x.canonical || ''));
+  return !ws.some(w => n.includes(w));
+}
+function score(r) { return r.c.dens != null ? r.c.dens / (r.c.cost30 || 15) : -1; }
+
+/* ---------- date (Supabase) ---------- */
+function mkCol() {
+  return { doc: id => ({
+    set: async data => { const { error } = await sb.from('docs').upsert({ user_id: uid, id, data, updated_at: new Date().toISOString() }); if (error) throw error; },
+    delete: async () => { const { error } = await sb.from('docs').delete().eq('user_id', uid).eq('id', id); if (error) throw error; }
+  }) };
+}
+async function uploadPage(blob, name) {
+  const path = uid + '/' + norm(name).slice(0, 150) + '.jpg';
+  const { error } = await sb.storage.from('pages').upload(path, blob, { contentType: 'image/jpeg', upsert: true });
+  if (error) throw error;
+  return path;
+}
+async function fillImgs() {
+  const imgs = [...document.querySelectorAll('img[data-asset]')];
+  const need = [...new Set(imgs.map(i => i.dataset.asset).filter(a => !urlCache[a]))];
+  if (need.length) {
+    const { data } = await sb.storage.from('pages').createSignedUrls(need, 3600 * 6);
+    (data || []).forEach(d => { if (d.signedUrl) urlCache[d.path] = d.signedUrl; });
+  }
+  imgs.forEach(i => { const u = urlCache[i.dataset.asset]; if (u && i.src !== u) i.src = u; });
+}
+function viewLogin(msg) {
+  document.querySelector('#nav').style.display = 'none';
+  $('#main').innerHTML = `<div class="card"><div class="field"><label>Email</label><input id="lE" type="email" autocomplete="email"></div>
+    <div class="field"><label>Parolă</label><input id="lP" type="password" autocomplete="current-password"></div>
+    <div class="row"><button class="btn" id="lIn">Intră</button><button class="btn sec" id="lUp">Creează cont</button></div>
+    <div class="muted" id="lMsg">${esc(msg || '')}</div></div>`;
+  const go = async up => {
+    const email = $('#lE').value.trim(), password = $('#lP').value;
+    if (!email || password.length < 6) { $('#lMsg').textContent = 'Email și parolă (min. 6 caractere).'; return; }
+    $('#lMsg').textContent = '…';
+    const r = up ? await sb.auth.signUp({ email, password }) : await sb.auth.signInWithPassword({ email, password });
+    if (r.error) { $('#lMsg').textContent = r.error.message; return; }
+    if (up && !r.data.session) { $('#lMsg').textContent = 'Cont creat. Confirmă din emailul primit, apoi apasă „Intră”.'; return; }
+  };
+  $('#lIn').onclick = () => go(false); $('#lUp').onclick = () => go(true);
+}
+async function initDb() {
+  if (!window.supabase) { $('#banner').innerHTML = '<div class="warn">Nu s-a putut încărca Supabase.</div>'; return; }
+  sb = window.supabase.createClient(SB_URL, SB_KEY);
+  sb.auth.onAuthStateChange((ev, session) => {
+    const id = session && session.user ? session.user.id : null;
+    if (id && id !== uid) { uid = id; col = mkCol(); setTimeout(loadAll, 0); }
+    if (!id) { uid = null; col = null; loaded = false; products = {}; pages = {}; basket = []; viewLogin(); }
+  });
+  const { data } = await sb.auth.getSession();
+  if (!data.session) viewLogin();
+}
+async function loadAll() {
+  $('#main').innerHTML = '<div class="card muted">Se încarcă datele…</div>';
+  const p = {}, pg = {};
+  try {
+    for (let from = 0; ; from += 1000) {
+      const { data, error } = await sb.from('docs').select('id,data').range(from, from + 999);
+      if (error) throw error;
+      data.forEach(r => {
+        const x = r.data;
+        if (r.id === 'profile') profile = { ...DEF_PROFILE, ...x };
+        else if (r.id === 'basket') basket = x.items || [];
+        else if (r.id === 'settings') cfg = { ...cfg, ...x };
+        else if (r.id.startsWith('p_')) p[r.id] = x;
+        else if (r.id.startsWith('c_')) pg[r.id] = x;
+      });
+      if (data.length < 1000) break;
+    }
+  } catch (e) { $('#banner').innerHTML = '<div class="warn">Eroare date: ' + esc(e.message) + '</div>'; }
+  products = p; pages = pg; loaded = true;
+  document.querySelector('#nav').style.display = '';
+  if (!cfg.gkey) { S.tab = 'profile'; toast('Adaugă cheia Gemini în Profil'); }
+  render();
+}
+async function upsertItem(it, store, date) {
+  const name = String(it.name || it.canonical || '').trim();
+  const p = num(it.price);
+  if (!name || !p || p <= 0 || p > 2000) return null;
+  const canonical = String(it.canonical || name).trim();
+  const key = norm(store) + '|' + norm(canonical) + '|' + norm(it.brand);
+  const id = 'p_' + norm(key).slice(0, 150);
+  const ex = products[id];
+  const w = num(it.weight_g), o = num(it.old_price);
+  const ppk = w > 0 ? Math.round(p / w * 1000 * 100) / 100 : null;
+  let hist = ((ex && ex.history) || []).filter(h => h.d !== date);
+  hist.push({ d: date, p, o: o && o > p ? o : null, ppk });
+  hist.sort((a, b) => a.d < b.d ? -1 : 1);
+  const keep = ex && ex.edited;
+  const doc = {
+    key, store, name, canonical, brand: String(it.brand || ''), category: String(it.category || ''),
+    tags: Array.isArray(it.tags) ? it.tags.map(String) : [],
+    weight_g: w || (ex && ex.weight_g) || null,
+    kcal100: keep ? ex.kcal100 : num(it.kcal100),
+    protein100: keep ? ex.protein100 : num(it.protein100),
+    fat100: keep ? ex.fat100 : num(it.fat100),
+    est: keep ? false : it.est !== false, edited: !!keep,
+    history: hist, last: hist[hist.length - 1].d
+  };
+  products[id] = doc;
+  await write(() => col.doc(id).set(doc));
+  return id;
+}
+function boxOf(b) {
+  if (!Array.isArray(b) || b.length !== 4) return null;
+  let v = b.map(Number); if (v.some(n => !Number.isFinite(n))) return null;
+  if (Math.max(...v) > 100) v = v.map(n => n / 1000); else if (Math.max(...v) > 1.5) v = v.map(n => n / 100);
+  v = v.map(n => Math.min(1, Math.max(0, n)));
+  if (v[2] <= v[0] || v[3] <= v[1]) return null;
+  return v.map(n => Math.round(n * 1000) / 1000);
+}
+
+/* ---------- AI ---------- */
+const GBASE = 'https://generativelanguage.googleapis.com/v1beta/';
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+function blobB64(blob) { return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1]); r.onerror = rej; r.readAsDataURL(blob); }); }
+async function ask(prompt, images) {
+  if (!cfg.gkey || !cfg.model) { const e = new Error('Lipsește cheia Gemini sau modelul (Profil)'); e.code = 'not_granted'; throw e; }
+  const parts = [];
+  for (const b of (images || [])) parts.push({ inline_data: { mime_type: 'image/jpeg', data: await blobB64(b) } });
+  parts.push({ text: prompt });
+  const body = JSON.stringify({ contents: [{ role: 'user', parts }], generationConfig: { responseMimeType: 'application/json', temperature: 0.1 } });
+  for (let t = 0; ; t++) {
+    const r = await fetch(GBASE + 'models/' + cfg.model + ':generateContent', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': cfg.gkey }, body });
+    const j = await r.json().catch(() => ({}));
+    if (r.ok) return ((j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts) || []).map(p => p.text || '').join('');
+    const msg = (j.error && j.error.message) || ('HTTP ' + r.status);
+    if ((r.status === 429 || r.status >= 500) && t < 5) {
+      if (r.status === 429 && /per day|PerDay/i.test(msg)) { const e = new Error('Limita zilnică Gemini atinsă. Reia mâine.'); e.code = 'rate_limited'; throw e; }
+      let w = 15000 * (t + 1);
+      const ri = ((j.error && j.error.details) || []).find(d => d.retryDelay); if (ri) w = (parseFloat(ri.retryDelay) || 15) * 1000 + 500;
+      await sleep(w); continue;
+    }
+    const e = new Error(msg); e.code = r.status === 429 ? 'rate_limited' : 'http'; throw e;
+  }
+}
+async function loadModels(key) {
+  const r = await fetch(GBASE + 'models?pageSize=200', { headers: { 'x-goog-api-key': key } });
+  const j = await r.json(); if (!r.ok) throw new Error((j.error && j.error.message) || 'cheie invalidă');
+  return (j.models || []).filter(m => (m.supportedGenerationMethods || []).includes('generateContent') && /flash/i.test(m.name) && !/image|tts|live|audio|embed|thinking|exp/i.test(m.name)).map(m => m.name.replace('models/', ''));
+}
+function pickModel(list) {
+  const ver = n => { const m = n.match(/gemini-(\d+(?:\.\d+)?)/); return m ? parseFloat(m[1]) : 0; };
+  const pref = list.filter(n => !/lite|preview/.test(n) && !/-\d{3}$/.test(n)).sort((a, b) => ver(b) - ver(a));
+  return pref[0] || list[0] || '';
+}
+function parseJson(txt) {
+  const t = String(txt || '').replace(/```json|```/g, '');
+  const a = t.indexOf('['), b = t.lastIndexOf(']'), c = t.indexOf('{'), d = t.lastIndexOf('}');
+  if (a !== -1 && b > a && (c === -1 || a < c)) return JSON.parse(t.slice(a, b + 1));
+  if (c !== -1 && d > c) return JSON.parse(t.slice(c, d + 1));
+  throw new Error('răspuns fără JSON');
+}
+const extractPrompt = store => `Ești un extractor de date din cataloage de promoții de supermarket din România. Imaginea este o pagină din catalogul magazinului ${store}.
+Extrage DOAR produsele alimentare (carne, pește, lactate, ouă, conserve, legume, fructe, paste, orez, pâine, nuci, cereale, băuturi fără alcool etc.). Ignoră non-alimentele și alcoolul.
+Răspunde STRICT cu un array JSON, fără alt text. Fiecare element:
+{"name":"denumirea completă din catalog","canonical":"denumire generică scurtă, fără brand și gramaj (ex: piept de pui, iaurt grecesc, ouă M, ton în ulei)","brand":"brand sau ''","weight_g":greutatea netă a ambalajului în grame (litri ×1000; pentru ouă estimează 60 g/ou; null dacă nu poți),"price":prețul promoțional curent în lei,"old_price":prețul vechi/barat sau null,"kcal100":kcal la 100 g (estimare pentru acel tip de produs),"protein100":proteină g/100 g,"fat100":grăsime g/100 g,"tags":[din: "carne","pește","lactate","ouă","vegetal"],"est":true,"box_2d":[ymin,xmin,ymax,xmax]}
+"box_2d" = chenarul produsului pe imagine (cu tot cu preț), în formatul standard [ymin, xmin, ymax, xmax] normalizat 0–1000.
+Reguli: preț cu punct zecimal (în catalog apare adesea ca "5" mare și "99" mic = 5.99). Dacă prețul e per kg fără ambalaj fix: weight_g=1000 și price=prețul/kg. Pentru oferte gen "2+1" sau "-50% la al doilea", dacă e clar folosește prețul efectiv per bucată. Dacă pagina nu are produse alimentare: [].`;
+
+/* ---------- imagini / pdf ---------- */
+async function toBlob(canvas) { return new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.82)); }
+async function imgBlob(file) {
+  const bmp = await createImageBitmap(file);
+  const sc = Math.min(1, 1800 / Math.max(bmp.width, bmp.height));
+  const c = document.createElement('canvas'); c.width = Math.round(bmp.width * sc); c.height = Math.round(bmp.height * sc);
+  c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+  return toBlob(c);
+}
+function loadScript(src) {
+  return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => rej(new Error('nu s-a încărcat ' + src)); document.head.appendChild(s); });
+}
+async function loadPdfjs() {
+  if (window.pdfjsLib) return;
+  const base = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+  await loadScript(base + 'pdf.min.js');
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc = base + 'pdf.worker.min.js';
+}
+function showLog() { const el = $('#log'); if (el) { el.textContent = S.log.join('\n'); el.scrollTop = el.scrollHeight; } }
+function log(m) { S.log.push(m); showLog(); }
+function showProg() {
+  const el = $('#prog'); if (!el) return; const P = S.prog;
+  if (!P || !P.total) { el.innerHTML = ''; return; }
+  const pct = Math.round(P.done / P.total * 100);
+  let eta = '';
+  if (P.done && P.done < P.total) { const s = Math.round((Date.now() - P.start) / P.done * (P.total - P.done) / 1000); eta = ' · ~' + (s >= 60 ? Math.floor(s / 60) + ' min ' : '') + (s % 60) + ' s rămase'; }
+  el.innerHTML = `<div class="bar"><div style="width:${pct}%"></div></div><div class="muted">${P.done}/${P.total} pagini · ${pct}%${eta}${P.found ? ' · ' + P.found + ' produse' : ''}</div>`;
+}
+
+async function processBlob(blob, label, fk, idx) {
+  const li = S.log.push('… ' + label) - 1; showLog();
+  try {
+    const arr = parseJson(await ask(extractPrompt(S.uStore), [blob]));
+    let c = 0, note = ''; const its = [];
+    for (const it of (Array.isArray(arr) ? arr : [])) {
+      const id = await upsertItem(it, S.uStore, S.uDate);
+      if (id) { c++; const g = it.box_2d; its.push({ id, b: boxOf(Array.isArray(g) && g.length === 4 ? [g[1], g[0], g[3], g[2]] : it.box) }); }
+    }
+    if (its.length) {
+      let asset = null;
+      try { asset = await uploadPage(blob, S.uStore + '-' + S.uDate + '-' + fk + '-' + idx); } catch (e) { note = ' (imaginea nu s-a salvat: ' + (e.message || e.code) + ')'; }
+      const pid = 'c_' + norm(S.uStore + '-' + S.uDate + '-' + fk + '-' + idx).slice(0, 150);
+      const pd = { store: S.uStore, date: S.uDate, fk, idx, asset, items: its };
+      pages[pid] = pd; await write(() => col.doc(pid).set(pd));
+    }
+    S.log[li] = '✓ ' + label + ': ' + c + ' produse' + note;
+    showLog(); return c;
+  } catch (e) {
+    S.log[li] = '✗ ' + label + ': ' + ((e && (e.message || e.code)) || 'eroare');
+    showLog();
+    if (e && (e.code === 'rate_limited' || e.code === 'not_granted')) { S.stop = true; log('Oprit (' + e.code + '). Reia mai târziu.'); }
+  }
+}
+const PAR = 3;
+async function runUpload() {
+  if (S.busy || !S.files.length) return;
+  S.busy = true; S.stop = false; S.log = []; S.prog = { done: 0, total: 0, start: Date.now(), found: 0 }; syncUploadBtn(); showProg();
+  if (!cfg.gkey || !cfg.model) { log('Adaugă cheia Gemini în Profil.'); S.busy = false; syncUploadBtn(); return; }
+  const runId = Date.now().toString(36), jobs = []; let ii = 0;
+  for (const f of S.files) {
+    try {
+      if (/pdf$/i.test(f.type) || /\.pdf$/i.test(f.name)) {
+        await loadPdfjs();
+        const doc = await window.pdfjsLib.getDocument({ data: await f.arrayBuffer() }).promise;
+        const n = Math.min(doc.numPages, S.uMax), fk = 'f' + runId + norm(f.name);
+        log(f.name + ': ' + doc.numPages + ' pagini, procesez ' + n);
+        for (let i = 1; i <= n; i++) jobs.push({ label: f.name + ' p.' + i, fk, idx: i, get: async () => {
+          const pg = await doc.getPage(i), v0 = pg.getViewport({ scale: 1 }), vp = pg.getViewport({ scale: 1600 / v0.width });
+          const c = document.createElement('canvas'); c.width = vp.width; c.height = vp.height;
+          await pg.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
+          return toBlob(c);
+        } });
+      } else { const k = ++ii; jobs.push({ label: f.name, fk: 'i' + runId, idx: k, get: () => imgBlob(f) }); }
+    } catch (e) { log('✗ ' + f.name + ': ' + (e.message || e.code)); }
+  }
+  S.prog.total = jobs.length; S.prog.start = Date.now(); showProg();
+  let next = 0;
+  const worker = async () => {
+    while (!S.stop && next < jobs.length) {
+      const j = jobs[next++];
+      try { const n = await processBlob(await j.get(), j.label, j.fk, j.idx); S.prog.found += n || 0; }
+      catch (e) { log('✗ ' + j.label + ': ' + (e.message || e.code)); }
+      S.prog.done++; showProg();
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(PAR, jobs.length) }, worker));
+  log(S.stop ? 'Oprit.' : 'Gata.');
+  S.busy = false; syncUploadBtn();
+}
+function syncUploadBtn() {
+  const b = $('#goBtn'), s = $('#stopBtn'); if (!b) return;
+  b.disabled = S.busy || !S.files.length; b.textContent = S.busy ? 'Se procesează…' : 'Analizează catalogul';
+  s.style.display = S.busy ? '' : 'none';
+}
+function updUploadStats() {
+  const el = $('#ustats'); if (!el) return;
+  const ps = Object.values(products), dates = new Set(); ps.forEach(p => p.history.forEach(h => dates.add(p.store + h.d)));
+  el.textContent = ps.length + ' produse în istoric · ' + dates.size + ' catalogări (magazin+dată)';
+}
+
+/* ---------- views ---------- */
+function render() {
+  document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('on', b.dataset.tab === S.tab));
+  ({ offers: viewOffers, catalog: viewCatalog, upload: viewUpload, basket: viewBasket, profile: viewProfile })[S.tab]();
+}
+function viewOffers() {
+  const stores = [...new Set(Object.values(products).map(p => p.store))];
+  $('#main').innerHTML = `<div class="filters">
+    <select id="fSort"><option value="scor">Echilibrat (proteină/kcal ÷ cost)</option><option value="dens">Cel mai bun raport proteină/kcal</option><option value="cost">Cel mai ieftin / 30 g proteină</option><option value="real">Cea mai mare reducere reală</option></select>
+    <select id="fStore"><option value="">Toate magazinele</option>${stores.map(s => `<option>${esc(s)}</option>`).join('')}</select>
+    <input id="fQ" type="text" placeholder="Caută…">
+  </div>
+  <label class="muted"><input type="checkbox" id="fPromo"> doar cu reducere în catalog</label>
+  <div id="stat" class="muted" style="margin:8px 0"></div><div id="list"></div>`;
+  $('#fSort').value = S.f.sort; $('#fStore').value = S.f.store; $('#fQ').value = S.f.q; $('#fPromo').checked = S.f.promo;
+  $('#fSort').onchange = e => { S.f.sort = e.target.value; renderList(); };
+  $('#fStore').onchange = e => { S.f.store = e.target.value; renderList(); };
+  $('#fQ').oninput = e => { S.f.q = e.target.value; renderList(); };
+  $('#fPromo').onchange = e => { S.f.promo = e.target.checked; renderList(); };
+  renderList();
+}
+function badges(r) {
+  const c = r.c, b = [];
+  if (c.real != null) {
+    if (c.real >= 10) b.push(`<span class="b g">−${Math.round(c.real)}% real vs mediană (${c.n} obs.)</span>`);
+    else if (c.real <= -5) b.push(`<span class="b r">+${Math.round(-c.real)}% peste mediană</span>`);
+    else b.push(`<span class="b">≈ preț obișnuit (${c.n} obs.)</span>`);
+    if (c.low) b.push('<span class="b g">minim din istoric</span>');
+  } else b.push('<span class="b bl">fără istoric încă</span>');
+  if (c.claimed != null) {
+    const sus = c.real != null && c.n >= 2 && c.claimed - c.real > 12;
+    b.push(`<span class="b ${sus ? 'a' : ''}">catalog −${Math.round(c.claimed)}%${sus ? ' (umflat?)' : ''}</span>`);
+  }
+  if (r.x.est) b.push('<span class="b">nutriție estimată</span>');
+  return b.join('');
+}
+function cardHtml(r) {
+  const { x, c, id } = r, inB = basket.includes(id), open = S.open[id];
+  const ed = open ? `<div class="ed">
+    <div><label>kcal / 100 g</label><input data-f="kcal100" value="${esc(x.kcal100 == null ? '' : x.kcal100)}" inputmode="decimal"></div>
+    <div><label>proteină g / 100 g</label><input data-f="protein100" value="${esc(x.protein100 == null ? '' : x.protein100)}" inputmode="decimal"></div>
+    <div><label>grăsime g / 100 g</label><input data-f="fat100" value="${esc(x.fat100 == null ? '' : x.fat100)}" inputmode="decimal"></div>
+    <div><label>greutate (g)</label><input data-f="weight_g" value="${esc(x.weight_g == null ? '' : x.weight_g)}" inputmode="decimal"></div>
+    <div style="grid-column:1/3;display:flex;gap:8px"><button class="btn sm" data-act="save">Salvează</button>
+    <button class="btn sm rd" data-act="del">${S.del[id] ? 'Sigur? Apasă din nou' : 'Șterge produsul'}</button></div></div>` : '';
+  return `<div class="card" data-id="${esc(id)}">
+    <div class="top"><div class="nm">${esc(x.name)}</div><div class="pr">${f2(c.cur.p)} lei${c.cur.o ? `<s>${f2(c.cur.o)}</s>` : ''}</div></div>
+    <div class="sub">${esc(x.store)} · ${x.weight_g ? Math.round(x.weight_g) + ' g' : 'gramaj ?'}${c.cur.ppk != null ? ' · ' + f2(c.cur.ppk) + ' lei/kg' : ''} · ${esc(x.last)}</div>
+    <div class="mx"><span><b>${f1(c.dens)}</b> g prot / 100 kcal</span><span><b>${f1(x.protein100)}</b> g/100 g</span><span><b>${f2(c.cost30)}</b> lei / 30 g prot</span></div>
+    <div class="bd">${badges(r)}</div>
+    <div class="acts"><button class="btn sm ${inB ? 'sec' : ''}" data-act="basket">${inB ? 'În coș ✓' : '+ Coș'}</button><button class="btn sm sec" data-act="edit">${open ? 'Închide' : 'Editează'}</button></div>${ed}</div>`;
+}
+function renderList() {
+  const el = $('#list'); if (!el) return;
+  const f = S.f, q = norm(f.q);
+  let rows = activeRows();
+  const total = rows.length;
+  rows = rows.filter(r => dietOk(r.x) && exclOk(r.x)
+    && (r.c.dens != null && r.c.dens >= (profile.minDensity || 0))
+    && (!f.store || r.x.store === f.store)
+    && (!q || norm(r.x.name).includes(q))
+    && (!f.promo || r.c.claimed != null));
+  const key = { scor: r => -score(r), dens: r => -(r.c.dens == null ? -1 : r.c.dens), cost: r => r.c.cost30 == null ? 1e9 : r.c.cost30, real: r => -(r.c.real == null ? -999 : r.c.real) }[f.sort];
+  rows.sort((a, b) => key(a) - key(b));
+  $('#stat').textContent = total ? `${rows.length} din ${total} oferte active (prag ≥ ${profile.minDensity} g prot/100 kcal, dietă: ${profile.diet})` : '';
+  if (!total) { el.innerHTML = '<div class="card muted">Încă nu ai nicio ofertă. Mergi la „Încarcă” și adaugă un catalog.</div>'; return; }
+  el.innerHTML = rows.slice(0, 80).map(cardHtml).join('') || '<div class="card muted">Nimic de afișat cu filtrele curente.</div>';
+}
+function catGroups() {
+  const g = {};
+  for (const p of Object.values(pages)) (g[p.store + '|' + p.date] = g[p.store + '|' + p.date] || []).push(p);
+  for (const k in g) g[k].sort((a, b) => a.fk < b.fk ? -1 : a.fk > b.fk ? 1 : a.idx - b.idx);
+  return g;
+}
+function plusBtn(id, cls, extra) {
+  const on = basket.includes(id);
+  return `<button class="${cls}${on ? ' on' : ''}" data-id="${esc(id)}" data-act="basket" ${extra || ''}>${on ? '✓' : '+'}</button>`;
+}
+function pageHtml(p, n, total) {
+  const items = (p.items || []).filter(i => products[i.id]);
+  const img = p.asset ? `<div class="pgscroll"><div class="pgimg${S.zoom ? ' z' : ''}"><img data-asset="${esc(p.asset)}" src="${esc(urlCache[p.asset] || '')}" alt="">${
+    items.filter(i => i.b).map(i => plusBtn(i.id, 'plus', `style="left:${i.b[2] * 100}%;top:${i.b[1] * 100}%" title="${esc(products[i.id].name)}"`)).join('')}</div></div>` : '';
+  const list = items.map(i => {
+    const x = products[i.id], c = calc(x);
+    return `<div class="li"><div><div class="nm">${esc(x.name)}</div><div class="sub">${f2(c.cur.p)} lei${c.cur.o ? ' (era ' + f2(c.cur.o) + ')' : ''} · ${f1(c.dens)} g prot/100 kcal · ${f2(c.cost30)} lei/30 g prot</div></div>${plusBtn(i.id, 'plus2')}</div>`;
+  }).join('');
+  return `<div class="pg"><div class="muted">Pagina ${n}/${total}</div>${img}<details${p.asset ? '' : ' open'}><summary class="muted">Produse (${items.length})</summary>${list}</details></div>`;
+}
+function viewCatalog() {
+  const g = catGroups(), keys = Object.keys(g).sort().reverse();
+  if (!keys.length) { $('#main').innerHTML = '<div class="card muted">Niciun catalog salvat încă. Încarcă unul din „Încarcă”.</div>'; return; }
+  if (!g[S.cat]) S.cat = keys[0];
+  $('#main').innerHTML = `<div class="row"><select id="cSel">${keys.map(k => `<option value="${esc(k)}">${esc(k.replace('|', ' · '))} (${g[k].length} pag.)</option>`).join('')}</select>
+    <label class="muted"><input type="checkbox" id="cZoom"> Zoom ×2</label></div><div id="pagesBox"></div>`;
+  $('#cSel').value = S.cat; $('#cZoom').checked = S.zoom;
+  const draw = () => { $('#pagesBox').innerHTML = g[S.cat].map((p, i) => pageHtml(p, i + 1, g[S.cat].length)).join(''); fillImgs().catch(e => toast('Imagini: ' + e.message)); };
+  $('#cSel').onchange = e => { S.cat = e.target.value; draw(); window.scrollTo(0, 0); };
+  $('#cZoom').onchange = e => { S.zoom = e.target.checked; document.querySelectorAll('.pgimg').forEach(el => el.classList.toggle('z', S.zoom)); };
+  draw();
+}
+function syncBasketBtns(id) {
+  const on = basket.includes(id);
+  document.querySelectorAll('[data-act="basket"][data-id="' + id + '"]').forEach(b => { b.classList.toggle('on', on); b.textContent = on ? '✓' : '+'; });
+}
+function viewUpload() {
+  $('#main').innerHTML = `<div class="field"><label>Magazin</label><select id="uStore">${STORES.map(s => `<option ${s === S.uStore ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
+  <div class="field"><label>Data de început a catalogului</label><input type="date" id="uDate" value="${esc(S.uDate)}"></div>
+  <div class="field"><label>Fișiere (PDF sau capturi de ecran / poze)</label><input type="file" id="uFiles" multiple accept="image/*,application/pdf"></div>
+  <div class="field"><label>Maxim pagini procesate dintr-un PDF</label><input type="number" id="uMax" min="1" max="120" value="${S.uMax}"></div>
+  <div class="muted" id="fileInfo">${S.files.length ? S.files.map(f => esc(f.name)).join(', ') : ''}</div>
+  <div class="row"><button class="btn" id="goBtn">Analizează catalogul</button><button class="btn sec" id="stopBtn" style="display:none">Stop</button></div>
+  <div id="prog"></div>
+  <div class="muted" id="ustats"></div>
+  <div id="log">${esc(S.log.join('\n'))}</div>`;
+  $('#uStore').onchange = e => S.uStore = e.target.value;
+  $('#uDate').onchange = e => S.uDate = e.target.value || today();
+  $('#uMax').onchange = e => S.uMax = Math.max(1, +e.target.value || 40);
+  $('#uFiles').onchange = e => { S.files = [...e.target.files]; $('#fileInfo').textContent = S.files.map(f => f.name).join(', '); syncUploadBtn(); };
+  $('#goBtn').onclick = runUpload;
+  $('#stopBtn').onclick = () => { S.stop = true; };
+  syncUploadBtn(); updUploadStats(); showProg();
+}
+function basketRows() {
+  return basket.map(id => products[id] && products[id].history ? { id, x: products[id], c: calc(products[id]) } : null).filter(Boolean);
+}
+function viewBasket() {
+  const rows = basketRows();
+  const tp = rows.reduce((a, r) => a + r.c.cur.p, 0), pr = rows.reduce((a, r) => a + (r.c.protPack || 0), 0), kc = rows.reduce((a, r) => a + (r.c.kcalPack || 0), 0);
+  $('#main').innerHTML = `<div class="tot"><div><div class="muted">Total</div><b>${f2(tp)} lei</b></div><div><div class="muted">Proteină</div><b>${Math.round(pr)} g</b></div><div><div class="muted">Calorii</div><b>${Math.round(kc)}</b></div><div><div class="muted">Buget</div><b>${profile.budget} lei</b></div></div>
+  <div class="row"><button class="btn" id="sugBtn">Sugerează coș (AI)</button><button class="btn sec" id="recBtn">Rețete din coș</button></div>
+  <div id="aiMsg" class="muted">${esc(S.suggest)}</div>
+  ${rows.length ? rows.map(r => `<div class="card" data-id="${esc(r.id)}"><div class="top"><div class="nm">${esc(r.x.name)}</div><div class="pr">${f2(r.c.cur.p)} lei</div></div>
+    <div class="sub">${esc(r.x.store)} · ${r.x.weight_g ? Math.round(r.x.weight_g) + ' g' : ''} · ${f1(r.c.dens)} g prot/100 kcal</div>
+    <div class="acts" style="margin-top:8px"><button class="btn sm sec" data-act="basket">Scoate</button></div></div>`).join('') : '<div class="card muted">Coșul e gol. Adaugă din „Oferte” sau cere o sugestie.</div>'}
+  <div id="recipes">${S.recipes}</div>`;
+  $('#sugBtn').onclick = suggestBasket; $('#recBtn').onclick = makeRecipes;
+}
+function viewProfile() {
+  const p = profile;
+  $('#main').innerHTML = `<div class="field"><label>Calorii pe zi</label><input id="pKcal" type="number" value="${p.kcal}"></div>
+  <div class="field"><label>Proteină pe zi (g)</label><input id="pProt" type="number" value="${p.protein}"></div>
+  <div class="field"><label>Stil alimentar</label><select id="pDiet">${['omnivor', 'pescetarian', 'vegetarian', 'vegan'].map(d => `<option ${d === p.diet ? 'selected' : ''}>${d}</option>`).join('')}</select></div>
+  <div class="field"><label>Exclude (cuvinte separate prin virgulă)</label><input id="pEx" value="${esc(p.exclude)}" placeholder="ex: porc, ficat, lapte"></div>
+  <div class="field"><label>Prag minim: g proteină la 100 kcal</label><input id="pMin" type="number" step="0.5" value="${p.minDensity}"></div>
+  <div class="field"><label>Buget coș (lei)</label><input id="pBud" type="number" value="${p.budget}"></div>
+  <div class="field"><label>Pentru câte zile e coșul</label><input id="pDays" type="number" value="${p.days}"></div>
+  <button class="btn" id="pSave">Salvează profilul</button>
+  <p class="muted">Praguri orientative: piept de pui ≈ 20, skyr ≈ 17, ouă ≈ 9, pâine ≈ 3.</p>
+  <h3 style="margin-top:24px">AI (Gemini, gratuit)</h3>
+  <div class="field"><label>Cheie API Gemini — o iei gratuit din aistudio.google.com/apikey</label><input id="gKey" type="password" value="${esc(cfg.gkey)}" autocomplete="off"></div>
+  <div class="row"><button class="btn sec" id="gLoad">Verifică cheia</button></div>
+  <div class="field"><label>Model</label><select id="gModel">${cfg.model ? `<option>${esc(cfg.model)}</option>` : '<option value="">— verifică cheia —</option>'}</select></div>
+  <button class="btn" id="gSave">Salvează setările AI</button>
+  <div class="muted" id="gMsg"></div>
+  <div class="row" style="margin-top:24px"><button class="btn sec" id="logout">Ieșire din cont</button></div>`;
+  $('#gLoad').onclick = async () => {
+    const k = $('#gKey').value.trim(); $('#gMsg').textContent = 'Verific…';
+    try { const ms = await loadModels(k); const pick = ms.includes(cfg.model) ? cfg.model : pickModel(ms);
+      $('#gModel').innerHTML = ms.map(m => `<option ${m === pick ? 'selected' : ''}>${esc(m)}</option>`).join(''); $('#gMsg').textContent = 'Cheie validă · ' + ms.length + ' modele'; }
+    catch (e) { $('#gMsg').textContent = 'Eroare: ' + e.message; }
+  };
+  $('#gSave').onclick = async () => {
+    cfg = { gkey: $('#gKey').value.trim(), model: $('#gModel').value };
+    if (!cfg.gkey || !cfg.model) { $('#gMsg').textContent = 'Verifică întâi cheia.'; return; }
+    await write(() => col.doc('settings').set(cfg)); toast('Setări AI salvate');
+  };
+  $('#logout').onclick = () => sb.auth.signOut();
+  $('#pSave').onclick = async () => {
+    profile = { kcal: +$('#pKcal').value || DEF_PROFILE.kcal, protein: +$('#pProt').value || DEF_PROFILE.protein, diet: $('#pDiet').value, exclude: $('#pEx').value, minDensity: +$('#pMin').value || 0, budget: +$('#pBud').value || DEF_PROFILE.budget, days: +$('#pDays').value || 7 };
+    await write(() => col.doc('profile').set(profile)); toast('Profil salvat');
+  };
+}
+
+/* ---------- AI coș / rețete ---------- */
+async function suggestBasket() {
+  const btn = $('#sugBtn'); btn.disabled = true; btn.textContent = 'Se gândește…';
+  try {
+    const cand = activeRows().filter(r => dietOk(r.x) && exclOk(r.x) && r.c.dens != null && r.c.dens >= (profile.minDensity || 0))
+      .sort((a, b) => score(b) - score(a)).slice(0, 45)
+      .map(r => ({ id: r.id, nume: r.x.name, magazin: r.x.store, pret: r.c.cur.p, g: r.x.weight_g, kcal100: r.x.kcal100, prot100: r.x.protein100, lei_30g_prot: r.c.cost30 && +r.c.cost30.toFixed(2), reducere_reala_pct: r.c.real != null ? Math.round(r.c.real) : null }));
+    if (!cand.length) { S.suggest = 'Nu ai oferte care trec filtrele din profil.'; viewBasket(); return; }
+    const txt = await ask(`Alege un coș de cumpărături pentru ${profile.days} zile din ofertele de mai jos. Țintă zilnică: ${profile.kcal} kcal, ${profile.protein} g proteină. Stil: ${profile.diet}. Buget maxim: ${profile.budget} lei. Poți cumpăra doar din listă (nu e obligatoriu să acoperi tot necesarul). Preferă proteină multă la calorii puține, preț bun și reducere reală, variază sursele de proteină și nu lua mai mult de ce se poate consuma în ${profile.days} zile.
+Răspunde STRICT cu JSON: {"ids":["id1","id2"],"note":"1-2 propoziții în română: ce acoperă coșul și ce lipsește"}
+Oferte: ${JSON.stringify(cand)}`);
+    const r = parseJson(txt);
+    const ids = (r.ids || []).filter(i => products[i]);
+    basket = [...new Set([...basket, ...ids])];
+    S.suggest = r.note || '';
+    await write(() => col.doc('basket').set({ items: basket }));
+  } catch (e) { S.suggest = 'Eroare: ' + (e.message || e.code); }
+  viewBasket();
+}
+async function makeRecipes() {
+  const rows = basketRows();
+  if (!rows.length) { toast('Coșul e gol'); return; }
+  const btn = $('#recBtn'); btn.disabled = true; btn.textContent = 'Se generează…';
+  try {
+    const items = rows.map(r => `${r.x.name} (${r.x.weight_g || '?'} g, ${r.x.kcal100} kcal/100g, ${r.x.protein100} g prot/100g)`).join('\n');
+    const txt = await ask(`Propune 4 rețete simple (max 30 min), bogate în proteină și slabe caloric, bazate în principal pe produsele din coș. Stil: ${profile.diet}. Țintă: ~${profile.kcal} kcal și ${profile.protein} g proteină pe zi. Ingrediente extra permise doar de bază (condimente, ulei puțin, legume obișnuite).
+Răspunde STRICT cu JSON array: [{"titlu":"","portii":1,"kcal_portie":0,"proteina_portie":0,"ingrediente":["cantitate + ingredient"],"pasi":["..."]}], în română.
+Coș:\n${items}`);
+    const arr = parseJson(txt);
+    S.recipes = arr.map(r => `<div class="recipe"><h3>${esc(r.titlu)}</h3><div class="muted">${esc(r.portii)} porții · ~${esc(r.kcal_portie)} kcal · ${esc(r.proteina_portie)} g proteină / porție</div>
+      <ul>${(r.ingrediente || []).map(i => `<li>${esc(i)}</li>`).join('')}</ul><ol>${(r.pasi || []).map(i => `<li>${esc(i)}</li>`).join('')}</ol></div>`).join('');
+  } catch (e) { S.recipes = '<div class="warn">Eroare: ' + esc(e.message || e.code) + '</div>'; }
+  viewBasket();
+}
+
+/* ---------- evenimente ---------- */
+document.addEventListener('click', async e => {
+  const nb = e.target.closest('#nav button');
+  if (nb) { S.tab = nb.dataset.tab; render(); return; }
+  const btn = e.target.closest('[data-act]'); if (!btn) return;
+  const card = btn.closest('[data-id]'); if (!card) return;
+  const id = card.dataset.id, act = btn.dataset.act;
+  if (act === 'basket') {
+    basket = basket.includes(id) ? basket.filter(i => i !== id) : [...basket, id];
+    write(() => col.doc('basket').set({ items: basket }));
+    if (S.tab === 'basket') viewBasket();
+    else if (S.tab === 'catalog') { syncBasketBtns(id); const x = products[id]; if (x) toast((basket.includes(id) ? 'Adăugat: ' : 'Scos: ') + x.name); }
+    else renderList();
+  } else if (act === 'edit') { S.open[id] = !S.open[id]; renderList(); }
+  else if (act === 'save') {
+    const x = { ...products[id] }; card.querySelectorAll('[data-f]').forEach(i => { x[i.dataset.f] = num(i.value); });
+    x.edited = true; x.est = false; products[id] = x; S.open[id] = false;
+    await write(() => col.doc(id).set(x)); renderList(); toast('Salvat');
+  } else if (act === 'del') {
+    if (!S.del[id]) { S.del[id] = true; renderList(); return; }
+    delete products[id]; basket = basket.filter(i => i !== id); delete S.del[id];
+    await write(() => col.doc(id).delete()); renderList();
+  }
+});
+initDb();
+</script>
+</body>
+</html>
