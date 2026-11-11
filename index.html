@@ -162,9 +162,20 @@ function mkCol() {
     delete: async () => { const { error } = await sb.from('docs').delete().eq('user_id', uid).eq('id', id); if (error) throw error; }
   }) };
 }
+async function shrink(blob) {
+  try {
+    const bmp = await createImageBitmap(blob), sc = Math.min(1, 1000 / bmp.width);
+    const c = document.createElement('canvas'); c.width = Math.round(bmp.width * sc); c.height = Math.round(bmp.height * sc);
+    c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+    let o = await new Promise(r => c.toBlob(r, 'image/webp', 0.7));
+    if (!o || o.type !== 'image/webp') o = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.7));
+    return o && o.size < blob.size ? o : blob;
+  } catch (e) { return blob; }
+}
 async function uploadPage(blob, name) {
-  const path = uid + '/' + norm(name).slice(0, 150) + '.jpg';
-  const { error } = await sb.storage.from('pages').upload(path, blob, { contentType: 'image/jpeg', upsert: true });
+  const b = await shrink(blob), ext = b.type === 'image/webp' ? 'webp' : 'jpg';
+  const path = uid + '/' + norm(name).slice(0, 150) + '.' + ext;
+  const { error } = await sb.storage.from('pages').upload(path, b, { contentType: b.type || 'image/jpeg', upsert: true, cacheControl: '31536000' });
   if (error) throw error;
   return path;
 }
@@ -637,9 +648,16 @@ function viewCatalog() {
   if (!keys.length) { $('#main').innerHTML = '<div class="card muted">Niciun catalog salvat încă. Încarcă unul din „Încarcă”.</div>'; return; }
   if (!g[S.cat]) S.cat = keys[0];
   $('#main').innerHTML = `<div class="row"><select id="cSel">${keys.map(k => `<option value="${esc(k)}">${esc(k.replace('|', ' · '))} (${g[k].length} pag.)</option>`).join('')}</select>
-    <label class="muted"><input type="checkbox" id="cZoom"> Zoom ×2</label></div><div id="pagesBox"></div>`;
+    <label class="muted"><input type="checkbox" id="cZoom"> Zoom ×2</label></div><div id="pagesBox"></div><div id="sent" style="height:1px"></div>`;
   $('#cSel').value = S.cat; $('#cZoom').checked = S.zoom;
-  const draw = () => { $('#pagesBox').innerHTML = g[S.cat].map((p, i) => pageHtml(p, i + 1, g[S.cat].length)).join(''); fillImgs().catch(e => toast('Imagini: ' + e.message)); };
+  let shown = 0;
+  const more = () => { const a = g[S.cat]; if (shown >= a.length) return; const end = Math.min(a.length, shown + 6);
+    $('#pagesBox').insertAdjacentHTML('beforeend', a.slice(shown, end).map((p, i) => pageHtml(p, shown + i + 1, a.length)).join(''));
+    shown = end; fillImgs().catch(e => toast('Imagini: ' + e.message)); };
+  const draw = () => { shown = 0; $('#pagesBox').innerHTML = ''; more(); };
+  if (window.moreObs) window.moreObs.disconnect();
+  window.moreObs = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) more(); }, { rootMargin: '1500px 0px' });
+  window.moreObs.observe($('#sent'));
   $('#cSel').onchange = e => { S.cat = e.target.value; draw(); window.scrollTo(0, 0); };
   $('#cZoom').onchange = e => { S.zoom = e.target.checked; document.querySelectorAll('.pgimg').forEach(el => el.classList.toggle('z', S.zoom)); };
   draw();
