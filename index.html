@@ -745,29 +745,44 @@ function basketGroups() {
   return Object.values(g).sort((a, b) => (b.d || '').localeCompare(a.d || ''));
 }
 const SECS = [['alimente', '🥩 Alimente'], ['curatenie', '🧼 Curățenie'], ['altele', '📦 Altele']];
-function itemHtml(r) {
-  const s = bsnap[r.id] || {}, dn = !!s.done;
-  return `<div class="li" data-id="${esc(r.id)}" style="${dn ? 'opacity:.5' : ''}"><div style="display:flex;gap:10px;align-items:center;flex:1">
-    <button class="plus2 ${dn ? 'on' : ''}" data-act="done" style="width:30px;height:30px;font-size:15px">${dn ? '✓' : ''}</button>
-    <div><div class="nm" style="${dn ? 'text-decoration:line-through' : ''}">${esc(r.x.name)}</div><div class="sub">${f2(bp(r))} lei${s.o ? ' (era ' + f2(s.o) + ')' : ''}${r.x.weight_g ? ' · ' + Math.round(r.x.weight_g) + ' g' : ''}${r.c.cur.p !== bp(r) ? ' · acum ' + f2(r.c.cur.p) + ' lei' : ''}</div></div></div>
+function pageIndex() {
+  const m = {};
+  for (const pg of Object.values(pages)) if (pg.asset) for (const it of (pg.items || [])) if (it.b && (!m[it.id] || pg.date > m[it.id].d)) m[it.id] = { asset: pg.asset, b: it.b, d: pg.date };
+  return m;
+}
+function thumbHtml(e) {
+  if (!e) return '';
+  const b = e.b, line = (b[3] - b[1]) < 0.04; let x1, y1, rw;
+  if (line) { rw = 0.46; x1 = Math.min(Math.max(b[0] - 0.02, 0), 1 - rw); y1 = Math.max(0, b[1] - 0.26); }
+  else { rw = Math.max(0.12, b[2] - b[0]); x1 = b[0]; y1 = b[1]; }
+  return `<div style="position:relative;width:64px;height:64px;overflow:hidden;border-radius:8px;background:#0f1115;flex:none"><img data-asset="${esc(e.asset)}" alt="" style="position:absolute;left:0;top:0;width:${64 / rw}px;max-width:none;transform-origin:0 0;transform:translate(${-x1 * 100}%,${-y1 * 100}%)"></div>`;
+}
+function itemHtml(r, pidx) {
+  const s = bsnap[r.id] || {}, dn = !!s.done, p = bp(r), o = s.o && s.o > p ? s.o : null, pct = o ? Math.round((o - p) / o * 100) : null;
+  return `<div class="li" data-id="${esc(r.id)}" style="${dn ? 'opacity:.5' : ''}"><div style="display:flex;gap:10px;align-items:center;flex:1;min-width:0">
+    <button class="plus2 ${dn ? 'on' : ''}" data-act="done" style="width:30px;height:30px;font-size:15px">${dn ? '✓' : ''}</button>${thumbHtml(pidx[r.id])}
+    <div style="min-width:0"><div class="nm" style="${dn ? 'text-decoration:line-through' : ''}">${esc(r.x.name)}</div>
+    <div class="sub"><b style="color:var(--tx);font-size:16px">${f2(p)} lei</b>${o ? ` <s>${f2(o)}</s>` : ''}${pct ? ` <span class="b g">−${pct}%</span>` : ''}</div>
+    <div class="sub">${r.x.weight_g ? Math.round(r.x.weight_g) + ' g' : ''}${r.c.cur.p !== p ? ' · acum ' + f2(r.c.cur.p) + ' lei' : ''}</div></div></div>
     <button class="btn sm sec" data-act="basket">✕</button></div>`;
 }
 function listText(g) {
   const rows = g.ids.map(id => ({ id, x: products[id], c: calc(products[id]) }));
+  const ln = r => { const s = bsnap[r.id] || {}, p = bp(r), o = s.o && s.o > p ? s.o : null; return `☐ ${r.x.name} — ${f2(p)} lei` + (o ? ` (era ${f2(o)}, −${Math.round((o - p) / o * 100)}%)` : ''); };
   let t = `Lista cumpărături ${g.store} · ${rangeRo(g.d, g.e)}\n`;
-  SECS.forEach(([k, n]) => { const rs = rows.filter(r => catOf(r.x) === k); if (rs.length) t += `\n${n}\n` + rs.map(r => `☐ ${r.x.name} — ${f2(bp(r))} lei`).join('\n') + '\n'; });
+  SECS.forEach(([k, n]) => { const rs = rows.filter(r => catOf(r.x) === k); if (rs.length) t += `\n${n}\n` + rs.map(ln).join('\n') + '\n'; });
   return t + `\nTotal: ${f2(rows.reduce((a, r) => a + bp(r), 0))} lei`;
 }
 function viewBasket() {
-  const gs = basketGroups(), now = today();
+  const gs = basketGroups(), now = today(), pidx = pageIndex();
   const html = gs.map(g => {
     const rows = g.ids.map(id => ({ id, x: products[id], c: calc(products[id]) }));
     const tp = rows.reduce((a, r) => a + bp(r), 0), food = rows.filter(r => catOf(r.x) === 'alimente');
     const pr = food.reduce((a, r) => a + (r.c.protPack || 0), 0), kc = food.reduce((a, r) => a + (r.c.kcalPack || 0), 0);
-    const exp = g.e && g.e < now, done = g.ids.filter(id => bsnap[id] && bsnap[id].done).length;
-    const body = SECS.map(([k, t]) => { const rs = rows.filter(r => catOf(r.x) === k); return rs.length ? `<div class="muted" style="margin:12px 0 2px;font-weight:600">${t} (${rs.length})</div>` + rs.map(itemHtml).join('') : ''; }).join('');
+    const exp = g.e && g.e < now, done = g.ids.filter(id => bsnap[id] && bsnap[id].done).length, sav = rows.reduce((a, r) => { const s = bsnap[r.id] || {}; return a + (s.o && s.o > bp(r) ? s.o - bp(r) : 0); }, 0);
+    const body = SECS.map(([k, t]) => { const rs = rows.filter(r => catOf(r.x) === k); return rs.length ? `<div class="muted" style="margin:12px 0 2px;font-weight:600">${t} (${rs.length})</div>` + rs.map(r => itemHtml(r, pidx)).join('') : ''; }).join('');
     return `<div class="card"><div class="top"><div class="nm">🛒 Lista ${esc(g.store)} · ${esc(rangeRo(g.d, g.e))}</div><span class="b ${exp ? 'r' : 'g'}">${exp ? 'expirată' : 'activă'}</span></div>
-      <div class="mx"><span><b>${f2(tp)} lei</b></span><span>${rows.length} produse · ${done} luate</span>${food.length ? `<span><b>${Math.round(pr)} g</b> proteină</span><span><b>${Math.round(kc)}</b> kcal</span>` : ''}</div>${body}
+      <div class="mx"><span><b>${f2(tp)} lei</b></span><span>${rows.length} produse · ${done} luate</span>${sav > 0 ? `<span>economie <b>${f2(sav)} lei</b></span>` : ''}${food.length ? `<span><b>${Math.round(pr)} g</b> proteină</span><span><b>${Math.round(kc)}</b> kcal</span>` : ''}</div>${body}
       <div class="acts" style="margin-top:12px"><button class="btn sm sec" data-gact="copy" data-gk="${esc(g.gk)}">Copiază lista</button><button class="btn sm rd" data-gact="clear" data-gk="${esc(g.gk)}">${S.del['g' + g.gk] ? 'Sigur? Apasă din nou' : 'Golește lista'}</button></div></div>`;
   }).join('');
   $('#main').innerHTML = `<div class="row"><button class="btn" id="sugBtn">Sugerează lista (AI)</button><button class="btn sec" id="recBtn">Rețete din listă</button></div>
@@ -775,6 +790,7 @@ function viewBasket() {
   ${html || '<div class="card muted">Nicio listă încă. Apasă „+” la produse în Catalog sau Oferte și se creează lista magazinului, după perioada catalogului.</div>'}
   <div id="recipes">${S.recipes}</div>`;
   $('#sugBtn').onclick = suggestBasket; $('#recBtn').onclick = makeRecipes;
+  fillImgs().catch(() => {});
 }
 function viewProfile() {
   const p = profile;
