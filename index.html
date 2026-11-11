@@ -106,7 +106,7 @@ const DEF_PROFILE = { kcal: 2200, protein: 150, diet: 'omnivor', exclude: '', mi
 
 const SB_URL = 'https://senwituyejxxkkxukggn.supabase.co', SB_KEY = 'sb_publishable_1-IHJpTJGxPaSDcWg3x_Xg_mvDXeEMZ';
 let sb = null, col = null, uid = null, loaded = false, assets = null, cfg = { gkey: '', model: '' }, urlCache = {};
-let favs = [], products = {}, pages = {}, profile = { ...DEF_PROFILE }, basket = [];
+let bsnap = {}, favs = [], products = {}, pages = {}, profile = { ...DEF_PROFILE }, basket = [];
 let S = { cat: '', zoom: false, tab: 'offers', f: { sort: 'scor', store: '', q: '', promo: false, fav: false }, runIds: new Set(), open: {}, del: {}, log: [], recipes: '', suggest: '', busy: false, stop: false, files: [], uStore: 'Lidl', uDate: today(), uEnd: addDays(today(), 6), autoDate: true };
 
 let wq = Promise.resolve();
@@ -234,7 +234,7 @@ async function loadAll() {
       data.forEach(r => {
         const x = r.data;
         if (r.id === 'profile') profile = { ...DEF_PROFILE, ...x };
-        else if (r.id === 'basket') basket = x.items || [];
+        else if (r.id === 'basket') { basket = x.items || []; bsnap = x.snap || {}; }
         else if (r.id === 'settings') cfg = { ...cfg, ...x };
         else if (r.id === 'favs') favs = x.ids || [];
         else if (r.id.startsWith('p_')) p[r.id] = x;
@@ -269,7 +269,8 @@ async function upsertItem(it, store, date) {
   const key = norm(store) + '|' + norm(canonical) + '|' + norm(it.brand);
   let id = 'p_' + norm(key).slice(0, 150);
   if (!products[id]) { const f = fuzzyId(store, canonical, it.brand); if (f) id = f; }
-  if (S.runIds.has(id) && products[id] && norm(products[id].name) !== norm(name)) { let hs = 5381; for (const ch of norm(name)) hs = ((hs * 33) ^ ch.charCodeAt(0)) >>> 0; id = 'p_' + norm(key).slice(0, 120) + '_' + hs.toString(36); }
+  { const pe = products[id], lh = pe && pe.history[pe.history.length - 1];
+  if (S.runIds.has(id) && pe && (norm(pe.name) !== norm(name) || (lh && lh.d === date && lh.p !== p))) { let hs = 5381; for (const ch of norm(name) + '|' + p) hs = ((hs * 33) ^ ch.charCodeAt(0)) >>> 0; id = 'p_' + norm(key).slice(0, 120) + '_' + hs.toString(36); } }
   const ex = products[id];
   const w = num(it.weight_g), o = num(it.old_price);
   const ppk = w > 0 ? Math.round(p / w * 1000 * 100) / 100 : null;
@@ -710,18 +711,25 @@ function viewUpload() {
   $('#stopBtn').onclick = () => { S.stop = true; S.userStop = true; };
   syncUploadBtn(); updUploadStats(); showProg();
 }
+function snapOf(id) { const x = products[id]; if (!x) return null; const h = x.history[x.history.length - 1]; return { p: h.p, o: h.o || null, d: h.d, e: h.e || null }; }
+function snapTag(r) {
+  const s = bsnap[r.id]; if (!s) return '';
+  const now = r.c.cur.p !== s.p ? ` · acum ${f2(r.c.cur.p)} lei (${fmtD(r.c.cur.d)})` : '';
+  return `<div class="sub">📅 ${fmtD(s.d)}${s.e ? '–' + fmtD(s.e) : ''} · preț salvat ${f2(s.p)} lei${s.o ? ' (era ' + f2(s.o) + ')' : ''}${now}</div>`;
+}
+const bp = r => (bsnap[r.id] && bsnap[r.id].p != null) ? bsnap[r.id].p : r.c.cur.p;
 function basketRows() {
   return basket.map(id => products[id] && products[id].history ? { id, x: products[id], c: calc(products[id]) } : null).filter(Boolean);
 }
 function viewBasket() {
   const rows = basketRows();
-  const tp = rows.reduce((a, r) => a + r.c.cur.p, 0), pr = rows.reduce((a, r) => a + (r.c.protPack || 0), 0), kc = rows.reduce((a, r) => a + (r.c.kcalPack || 0), 0);
+  const tp = rows.reduce((a, r) => a + bp(r), 0), pr = rows.reduce((a, r) => a + (r.c.protPack || 0), 0), kc = rows.reduce((a, r) => a + (r.c.kcalPack || 0), 0);
   $('#main').innerHTML = `<div class="tot"><div><div class="muted">Total</div><b>${f2(tp)} lei</b></div><div><div class="muted">Proteină</div><b>${Math.round(pr)} g</b></div><div><div class="muted">Calorii</div><b>${Math.round(kc)}</b></div><div><div class="muted">Buget</div><b>${profile.budget} lei</b></div></div>
   <div class="row"><button class="btn" id="sugBtn">Sugerează coș (AI)</button><button class="btn sec" id="recBtn">Rețete din coș</button></div>
   <div id="aiMsg" class="muted">${esc(S.suggest)}</div>
-  ${rows.length ? rows.map(r => `<div class="card" data-id="${esc(r.id)}"><div class="top"><div class="nm">${esc(r.x.name)}</div><div class="pr">${f2(r.c.cur.p)} lei</div></div>
+  ${rows.length ? rows.map(r => `<div class="card" data-id="${esc(r.id)}"><div class="top"><div class="nm">${esc(r.x.name)}</div><div class="pr">${f2(bp(r))} lei</div></div>
     <div class="sub">${esc(r.x.store)} · ${r.x.weight_g ? Math.round(r.x.weight_g) + ' g' : ''} · ${f1(r.c.dens)} g prot/100 kcal</div>
-    <div class="acts" style="margin-top:8px"><button class="btn sm sec" data-act="basket">Scoate</button></div></div>`).join('') : '<div class="card muted">Coșul e gol. Adaugă din „Oferte” sau cere o sugestie.</div>'}
+    ${snapTag(r)}<div class="acts" style="margin-top:8px"><button class="btn sm sec" data-act="basket">Scoate</button></div></div>`).join('') : '<div class="card muted">Coșul e gol. Adaugă din „Oferte” sau cere o sugestie.</div>'}
   <div id="recipes">${S.recipes}</div>`;
   $('#sugBtn').onclick = suggestBasket; $('#recBtn').onclick = makeRecipes;
 }
@@ -774,9 +782,9 @@ Răspunde STRICT cu JSON: {"ids":["id1","id2"],"note":"1-2 propoziții în româ
 Oferte: ${JSON.stringify(cand)}`);
     const r = parseJson(txt);
     const ids = (r.ids || []).filter(i => products[i]);
-    basket = [...new Set([...basket, ...ids])];
+    basket = [...new Set([...basket, ...ids])]; ids.forEach(i => { if (!bsnap[i]) bsnap[i] = snapOf(i); });
     S.suggest = r.note || '';
-    await write(() => col.doc('basket').set({ items: basket }));
+    await write(() => col.doc('basket').set({ items: basket, snap: bsnap }));
   } catch (e) { S.suggest = 'Eroare: ' + (e.message || e.code); }
   viewBasket();
 }
@@ -806,7 +814,8 @@ document.addEventListener('click', async e => {
   if (act === 'basket') {
     const adding = !basket.includes(id);
     basket = adding ? [...basket, id] : basket.filter(i => i !== id);
-    write(() => col.doc('basket').set({ items: basket }));
+    if (adding) bsnap[id] = snapOf(id); else delete bsnap[id];
+    write(() => col.doc('basket').set({ items: basket, snap: bsnap }));
     if (adding && !favs.includes(id)) { favs = [...favs, id]; write(() => col.doc('favs').set({ ids: favs })); }
     if (S.tab === 'basket') viewBasket();
     else if (S.tab === 'catalog') { syncBasketBtns(id); const x = products[id]; if (x) toast((basket.includes(id) ? 'Adăugat: ' : 'Scos: ') + x.name); }
