@@ -92,14 +92,21 @@ nav .midc svg{width:22px;height:22px}
 .sec{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--mut);margin:20px 0 2px}
 .sec::after{content:"";flex:1;height:1px;background:var(--line)}
 .sec i{font-style:normal;font-weight:500;letter-spacing:0;text-transform:none;color:#7c8494}
-.ic{display:flex;gap:14px;align-items:center;padding:14px 0;border-bottom:1px solid #20242c}
-.ic:last-child{border-bottom:0}
-.ic .nm{font-size:15px;font-weight:500;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.ic .pr{display:flex;align-items:baseline;gap:8px;margin-top:6px}
-.ic .pr b{font-size:19px;font-weight:700;letter-spacing:-.3px}
-.ic .pr s{font-size:13px;color:#6b7280}
-.ic .mt{display:flex;align-items:center;gap:8px;margin-top:6px;font-size:12px;color:var(--mut)}
-.ic .rt{display:flex;flex-direction:column;align-items:center;gap:10px}
+.g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:10px}
+.tl{background:var(--bg);border:1px solid var(--line);border-radius:16px;overflow:hidden;position:relative;display:flex;flex-direction:column}
+.tl .im{position:relative;aspect-ratio:4/3;overflow:hidden;background:#1c2330;display:flex;align-items:center;justify-content:center;font-size:40px;cursor:pointer}
+.tl .im img{position:absolute;left:0;top:0;max-width:none;transform-origin:0 0}
+.tl .ck{position:absolute;top:8px;right:8px;width:30px;height:30px;border-radius:50%;background:rgba(15,17,21,.85);border:2px solid #e8eaed;color:#06220f;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;pointer-events:none}
+.tl.dn .ck{background:var(--ac);border-color:var(--ac)}
+.tl .off{position:absolute;top:8px;left:8px;background:var(--ac);color:#06220f;font-size:12px;font-weight:600;border-radius:99px;padding:1px 8px;pointer-events:none}
+.tl .bd{padding:8px 10px 10px;display:flex;flex-direction:column;flex:1}
+.tl .nm{font-size:13px;font-weight:500;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.tl .pr{margin-top:auto;padding-top:6px;display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+.tl .pr b{font-size:18px;font-weight:700;letter-spacing:-.3px}
+.tl .pr s{font-size:12px;color:#6b7280}
+.tl .mt{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--mut);margin-top:2px;min-height:22px}
+.tl.dn .im img,.tl.dn .bd{opacity:.45}
+.tl.dn .nm{text-decoration:line-through}
 .ph{width:64px;height:64px;border-radius:12px;background:#1c2330;display:flex;align-items:center;justify-content:center;font-size:26px;flex:none}
 .chk{width:30px;height:30px;border-radius:50%;border:2px solid #4b5160;background:transparent;color:#06220f;font-size:16px;font-weight:700;padding:0;flex:none;line-height:1}
 .chk.on{background:var(--ac);border-color:var(--ac)}
@@ -798,14 +805,19 @@ function thumbHtml(e) {
 }
 function itemHtml(r, pidx) {
   const s = sn(r.id), dn = !!(bsnap[r.id] && bsnap[r.id].done), p = bp(r), o = s.o && s.o > p ? s.o : null, pct = o ? Math.round((o - p) / o * 100) : null;
-  const ico = { alimente: '🥩', curatenie: '🧼', altele: '📦' }[catOf(r.x)];
-  const photo = pidx[r.id] ? thumbHtml(pidx[r.id]) : `<div class="ph">${ico}</div>`;
-  const mut = dn ? 'color:var(--mut);opacity:.6' : '';
-  return `<div class="ic" data-id="${esc(r.id)}">${photo}
-    <div style="flex:1;min-width:0"><div class="nm" style="${mut}${dn ? ';text-decoration:line-through' : ''}">${esc(r.x.name)}</div>
-    <div class="pr" style="${mut}"><b>${f2(p)} lei</b>${o ? `<s>${f2(o)}</s>` : ''}</div>
-    <div class="mt">${pct ? `<span class="b g">−${pct}%</span>` : ''}${r.x.weight_g ? `<span>${Math.round(r.x.weight_g)} g</span>` : ''}${r.c.cur.p !== p ? `<span>acum ${f2(r.c.cur.p)} lei</span>` : ''}</div></div>
-    <div class="rt"><button class="chk ${dn ? 'on' : ''}" data-act="done" aria-label="Bifează">${dn ? '✓' : ''}</button><button class="xb" data-act="basket" aria-label="Scoate din listă">✕</button></div></div>`;
+  const ico = { alimente: '🥩', curatenie: '🧼', altele: '📦' }[catOf(r.x)], e = pidx[r.id];
+  let img = ico;
+  if (e) {
+    const b = e.b, line = (b[3] - b[1]) < 0.04; let x1, y1, rw;
+    if (line) { rw = 0.46; x1 = Math.min(Math.max(b[0] - 0.02, 0), 1 - rw); y1 = Math.max(0, b[1] - 0.26); }
+    else { rw = Math.max(0.12, b[2] - b[0]); x1 = b[0]; y1 = b[1]; }
+    img = `<img data-asset="${esc(e.asset)}" alt="" style="width:${100 / rw}%;transform:translate(${-x1 * 100}%,${-y1 * 100}%)">`;
+  }
+  const meta = [r.x.weight_g ? Math.round(r.x.weight_g) + ' g' : '', r.c.cur.p !== p ? 'acum ' + f2(r.c.cur.p) : ''].filter(Boolean).join(' · ');
+  return `<div class="tl ${dn ? 'dn' : ''}" data-id="${esc(r.id)}"><div class="im" data-act="done" role="button" aria-label="Bifează">${img}</div>
+    ${pct ? `<span class="off">−${pct}%</span>` : ''}<span class="ck">${dn ? '✓' : ''}</span>
+    <div class="bd"><div class="nm">${esc(r.x.name)}</div><div class="pr"><b>${f2(p)} lei</b>${o ? `<s>${f2(o)}</s>` : ''}</div>
+    <div class="mt"><span>${meta}</span><button class="xb" data-act="basket" aria-label="Scoate din listă">✕</button></div></div></div>`;
 }
 function listText(g) {
   const rows = g.ids.map(id => ({ id, x: products[id], c: calc(products[id]) }));
@@ -821,7 +833,7 @@ function viewBasket() {
     const tp = rows.reduce((a, r) => a + bp(r), 0), food = rows.filter(r => catOf(r.x) === 'alimente');
     const pr = food.reduce((a, r) => a + (r.c.protPack || 0), 0), kc = food.reduce((a, r) => a + (r.c.kcalPack || 0), 0);
     const exp = g.e && g.e < now, done = g.ids.filter(id => bsnap[id] && bsnap[id].done).length, sav = rows.reduce((a, r) => { const s = sn(r.id); return a + (s.o && s.o > bp(r) ? s.o - bp(r) : 0); }, 0);
-    const body = SECS.map(([k, t]) => { const rs = rows.filter(r => catOf(r.x) === k); return rs.length ? `<div class="sec">${t}<i>${rs.length} · ${f2(rs.reduce((a, r) => a + bp(r), 0))} lei</i></div>` + rs.map(r => itemHtml(r, pidx)).join('') : ''; }).join('');
+    const body = SECS.map(([k, t]) => { const rs = rows.filter(r => catOf(r.x) === k); return rs.length ? `<div class="sec">${t}<i>${rs.length} · ${f2(rs.reduce((a, r) => a + bp(r), 0))} lei</i></div><div class="g2">` + rs.map(r => itemHtml(r, pidx)).join('') + '</div>' : ''; }).join('');
     return `<div class="lst"><div class="lh"><div><div class="st">${esc(g.store)}</div><div class="pd"><span>${esc(rangeRo(g.d, g.e))}</span><span class="tg ${exp ? 'x' : ''}">${exp ? 'expirată' : 'activă'}</span></div></div>
       <div class="tt"><b>${f2(tp)} lei</b>${sav > 0 ? `<small>economisești ${f2(sav)} lei</small>` : ''}</div></div>
       <div class="pgb"><div style="width:${rows.length ? Math.round(done / rows.length * 100) : 0}%"></div></div>
