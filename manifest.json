@@ -1,6 +1,6 @@
 {
- "name": "Oferte proteice",
- "short_name": "Oferte",
+ "name": "CuCap",
+ "short_name": "CuCap",
  "start_url": "./",
  "scope": "./",
  "display": "standalone",
