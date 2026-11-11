@@ -268,6 +268,17 @@ function boxOf(b) {
 const GBASE = 'https://generativelanguage.googleapis.com/v1beta/';
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 function blobB64(blob) { return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1]); r.onerror = rej; r.readAsDataURL(blob); }); }
+let modelList = null;
+function deadModels() { try { const d = JSON.parse(localStorage.getItem('gdead') || '{}'); return d.day === today() ? d.m : []; } catch (e) { return []; } }
+function markDead(m) { try { const d = deadModels(); d.push(m); localStorage.setItem('gdead', JSON.stringify({ day: today(), m: d })); } catch (e) {} }
+async function activeModel() {
+  const dead = deadModels();
+  if (!dead.includes(cfg.model)) return cfg.model;
+  if (!modelList) { try { modelList = await loadModels(cfg.gkey); } catch (e) { modelList = []; } }
+  const ver = n => { const m = n.match(/gemini-(\d+(?:\.\d+)?)/); return m ? parseFloat(m[1]) : 0; };
+  const cand = modelList.filter(m => !dead.includes(m) && !/preview/.test(m)).sort((a, b) => (/lite/.test(b) - /lite/.test(a)) || ver(b) - ver(a));
+  return cand[0] || null;
+}
 async function ask(prompt, images, onWait) {
   if (!cfg.gkey || !cfg.model) { const e = new Error('Lipsește cheia Gemini sau modelul (Profil)'); e.code = 'not_granted'; throw e; }
   const parts = [];
@@ -275,12 +286,14 @@ async function ask(prompt, images, onWait) {
   parts.push({ text: prompt });
   const body = JSON.stringify({ contents: [{ role: 'user', parts }], generationConfig: { responseMimeType: 'application/json', temperature: 0.1 } });
   for (let t = 0; ; t++) {
-    const r = await fetch(GBASE + 'models/' + cfg.model + ':generateContent', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': cfg.gkey }, body });
+    const model = await activeModel();
+    if (!model) { const e = new Error('Limita zilnică e atinsă la toate modelele Gemini. Reia mâine — paginile deja procesate nu se refac.'); e.code = 'rate_limited'; throw e; }
+    const r = await fetch(GBASE + 'models/' + model + ':generateContent', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': cfg.gkey }, body });
     const j = await r.json().catch(() => ({}));
     if (r.ok) return ((j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts) || []).map(p => p.text || '').join('');
     const msg = (j.error && j.error.message) || ('HTTP ' + r.status);
     if ((r.status === 429 || r.status >= 500) && t < 5) {
-      if (r.status === 429 && /per day|PerDay/i.test(msg)) { const e = new Error('Limita zilnică Gemini atinsă. Reia mâine.'); e.code = 'rate_limited'; throw e; }
+      if (r.status === 429 && /per ?day|PerDay|RequestsPerDay/i.test(msg + JSON.stringify(j.error && j.error.details || ''))) { markDead(model); log('Limita zilnică atinsă la ' + model + ', trec pe alt model.'); t--; continue; }
       let w = 15000 * (t + 1);
       const ri = ((j.error && j.error.details) || []).find(d => d.retryDelay); if (ri) w = (parseFloat(ri.retryDelay) || 15) * 1000 + 500;
       if (onWait) onWait(Math.round(w / 1000)); await sleep(w); continue;
@@ -342,6 +355,8 @@ function showProg() {
   el.innerHTML = `<div class="bar"><div style="width:${pct}%"></div></div><div class="muted">${P.done}/${P.total} pagini · ${pct}%${eta}${P.found ? ' · ' + P.found + ' produse' : ''}</div>`;
 }
 
+const pidOf = (fk, idx) => 'c_' + norm(S.uStore + '-' + S.uDate + '-' + fk + '-' + idx).slice(0, 150);
+const pageDone = (fk, idx) => !!pages[pidOf(fk, idx)];
 async function processBatch(js) {
   const label = js.length > 1 ? js[0].label + ' … ' + js[js.length - 1].label : js[0].label;
   const li = S.log.push('… ' + label) - 1; showLog();
@@ -355,10 +370,10 @@ async function processBatch(js) {
       if (id) { c++; const g = it.box_2d; per[k].push({ id, b: boxOf(Array.isArray(g) && g.length === 4 ? [g[1], g[0], g[3], g[2]] : it.box) }); }
     }
     await Promise.all(js.map(async (j, k) => {
-      if (!per[k].length) return;
+      const pid = pidOf(j.fk, j.idx);
+      if (!per[k].length) { const pd = { store: S.uStore, date: S.uDate, fk: j.fk, idx: j.idx, asset: null, items: [] }; pages[pid] = pd; await write(() => col.doc(pid).set(pd)); return; }
       let asset = null;
       try { asset = await uploadPage(blobs[k], S.uStore + '-' + S.uDate + '-' + j.fk + '-' + j.idx); } catch (e) { note = ' (imagini nesalvate: ' + (e.message || e.code) + ')'; }
-      const pid = 'c_' + norm(S.uStore + '-' + S.uDate + '-' + j.fk + '-' + j.idx).slice(0, 150);
       const pd = { store: S.uStore, date: S.uDate, fk: j.fk, idx: j.idx, asset, items: per[k] };
       pages[pid] = pd; await write(() => col.doc(pid).set(pd));
     }));
@@ -379,15 +394,15 @@ async function runUpload() {
       if (/pdf$/i.test(f.type) || /\.pdf$/i.test(f.name)) {
         await loadPdfjs();
         const doc = await window.pdfjsLib.getDocument({ data: await f.arrayBuffer() }).promise;
-        const n = doc.numPages, fk = 'f' + runId + norm(f.name);
-        log(f.name + ': ' + doc.numPages + ' pagini, procesez ' + n);
-        for (let i = 1; i <= n; i++) jobs.push({ label: f.name + ' p.' + i, fk, idx: i, get: async () => {
+        const n = doc.numPages, fk = 'f' + norm(f.name) + f.size;
+        { let sk = 0; for (let i = 1; i <= n; i++) if (pageDone(fk, i)) sk++; log(f.name + ': ' + n + ' pagini' + (sk ? ', ' + sk + ' deja procesate (sar peste ele)' : '')); }
+        for (let i = 1; i <= n; i++) if (!pageDone(fk, i)) jobs.push({ label: f.name + ' p.' + i, fk, idx: i, get: async () => {
           const pg = await doc.getPage(i), v0 = pg.getViewport({ scale: 1 }), vp = pg.getViewport({ scale: 1300 / v0.width });
           const c = document.createElement('canvas'); c.width = vp.width; c.height = vp.height;
           await pg.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
           return toBlob(c);
         } });
-      } else { const k = ++ii; jobs.push({ label: f.name, fk: 'i' + runId, idx: k, get: () => imgBlob(f) }); }
+      } else { const fk = 'i' + norm(f.name) + f.size; if (!pageDone(fk, 1)) jobs.push({ label: f.name, fk, idx: 1, get: () => imgBlob(f) }); else log(f.name + ': deja procesat'); }
     } catch (e) { log('✗ ' + f.name + ': ' + (e.message || e.code)); }
   }
   S.prog.total = jobs.length; S.prog.start = Date.now(); showProg();
@@ -493,7 +508,7 @@ function renderList() {
 }
 function catGroups() {
   const g = {};
-  for (const p of Object.values(pages)) (g[p.store + '|' + p.date] = g[p.store + '|' + p.date] || []).push(p);
+  for (const p of Object.values(pages)) if (p.items && p.items.length) (g[p.store + '|' + p.date] = g[p.store + '|' + p.date] || []).push(p);
   for (const k in g) g[k].sort((a, b) => a.fk < b.fk ? -1 : a.fk > b.fk ? 1 : a.idx - b.idx);
   return g;
 }
