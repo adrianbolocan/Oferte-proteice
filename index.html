@@ -66,6 +66,8 @@ button{font:inherit;cursor:pointer}
 nav button{padding:10px 2px !important;font-size:13px !important}
 .bar{height:10px;background:var(--line);border-radius:99px;overflow:hidden;margin:10px 0 4px}
 .bar div{height:100%;background:var(--ac);transition:width .3s}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:30;display:flex;align-items:center;justify-content:center;padding:16px}
+.modal>div{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;max-width:520px;width:100%;max-height:80vh;overflow:auto}
 .tot{display:flex;flex-wrap:wrap;gap:6px 16px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px;margin:10px 0}
 .tot b{font-size:17px}
 </style>
@@ -104,8 +106,8 @@ const DEF_PROFILE = { kcal: 2200, protein: 150, diet: 'omnivor', exclude: '', mi
 
 const SB_URL = 'https://senwituyejxxkkxukggn.supabase.co', SB_KEY = 'sb_publishable_1-IHJpTJGxPaSDcWg3x_Xg_mvDXeEMZ';
 let sb = null, col = null, uid = null, loaded = false, assets = null, cfg = { gkey: '', model: '' }, urlCache = {};
-let products = {}, pages = {}, profile = { ...DEF_PROFILE }, basket = [];
-let S = { cat: '', zoom: false, tab: 'offers', f: { sort: 'scor', store: '', q: '', promo: false }, open: {}, del: {}, log: [], recipes: '', suggest: '', busy: false, stop: false, files: [], uStore: 'Lidl', uDate: today(), uEnd: addDays(today(), 6), autoDate: true };
+let favs = [], products = {}, pages = {}, profile = { ...DEF_PROFILE }, basket = [];
+let S = { cat: '', zoom: false, tab: 'offers', f: { sort: 'scor', store: '', q: '', promo: false, fav: false }, runIds: new Set(), open: {}, del: {}, log: [], recipes: '', suggest: '', busy: false, stop: false, files: [], uStore: 'Lidl', uDate: today(), uEnd: addDays(today(), 6), autoDate: true };
 
 let wq = Promise.resolve();
 function write(fn) {
@@ -234,6 +236,7 @@ async function loadAll() {
         if (r.id === 'profile') profile = { ...DEF_PROFILE, ...x };
         else if (r.id === 'basket') basket = x.items || [];
         else if (r.id === 'settings') cfg = { ...cfg, ...x };
+        else if (r.id === 'favs') favs = x.ids || [];
         else if (r.id.startsWith('p_')) p[r.id] = x;
         else if (r.id.startsWith('c_')) pg[r.id] = x;
       });
@@ -246,13 +249,26 @@ async function loadAll() {
   render();
   if (cfg.gkey) resumePending();
 }
+const STOP = new Set(['de', 'cu', 'la', 'si', 'din', 'in', 'pe', 'fara', 'bio', 'buc', 'kg', 'g']);
+const toks = s => new Set(norm(s).split('-').filter(t => t && !STOP.has(t)));
+function fuzzyId(store, canonical, brand) {
+  const a = toks(canonical), b0 = norm(brand); if (a.size < 2) return null;
+  let best = null, bs = 0;
+  for (const [id, x] of Object.entries(products)) {
+    if (x.store !== store || norm(x.brand) !== b0) continue;
+    const t = toks(x.canonical); let n = 0; a.forEach(v => { if (t.has(v)) n++; });
+    const s = n / (a.size + t.size - n); if (s > bs) { bs = s; best = id; }
+  }
+  return bs >= 0.75 ? best : null;
+}
 async function upsertItem(it, store, date) {
   const name = String(it.name || it.canonical || '').trim();
   const p = num(it.price);
   if (!name || !p || p <= 0 || p > 2000) return null;
   const canonical = String(it.canonical || name).trim();
   const key = norm(store) + '|' + norm(canonical) + '|' + norm(it.brand);
-  const id = 'p_' + norm(key).slice(0, 150);
+  let id = 'p_' + norm(key).slice(0, 150);
+  if (!products[id]) { const f = fuzzyId(store, canonical, it.brand); if (f) id = f; }
   const ex = products[id];
   const w = num(it.weight_g), o = num(it.old_price);
   const ppk = w > 0 ? Math.round(p / w * 1000 * 100) / 100 : null;
@@ -261,7 +277,7 @@ async function upsertItem(it, store, date) {
   hist.sort((a, b) => a.d < b.d ? -1 : 1);
   const keep = ex && ex.edited;
   const doc = {
-    key, store, name, canonical, brand: String(it.brand || ''), category: String(it.category || ''),
+    key: ex ? ex.key : key, store, name, canonical, brand: String(it.brand || ''), category: String(it.category || ''),
     tags: Array.isArray(it.tags) ? it.tags.map(String) : [],
     weight_g: w || (ex && ex.weight_g) || null,
     kcal100: keep ? ex.kcal100 : num(it.kcal100),
@@ -270,7 +286,7 @@ async function upsertItem(it, store, date) {
     est: keep ? false : it.est !== false, edited: !!keep,
     history: hist, last: hist[hist.length - 1].d
   };
-  products[id] = doc;
+  products[id] = doc; S.runIds.add(id);
   await write(() => col.doc(id).set(doc));
   return id;
 }
@@ -489,7 +505,7 @@ async function resumePending() {
 async function runUpload() {
   if (S.busy || !S.files.length) return;
   kv('put', 'pending', { files: S.files, store: S.uStore, date: S.uDate, end: S.uEnd, auto: S.autoDate });
-  keepAwake(true);
+  S.runIds = new Set(); keepAwake(true);
   S.busy = true; S.stop = false; S.log = []; S.prog = { done: 0, total: 0, start: Date.now(), found: 0 }; syncUploadBtn(); showProg();
   if (!cfg.gkey || !cfg.model) { log('Adaugă cheia Gemini în Profil.'); S.busy = false; keepAwake(false); syncUploadBtn(); return; }
   const tasks = [];
@@ -533,6 +549,7 @@ async function runUpload() {
   };
   await Promise.all(Array.from({ length: Math.min(PAR, tasks.length) }, worker));
   log(S.stop ? 'Oprit.' : 'Gata. ' + S.prog.found + ' produse.');
+  if (!S.stop) { const hit = [...S.runIds].filter(id => favs.includes(id) && products[id] && products[id].history.length > 1); if (hit.length) favAlert(hit); }
   if (!S.stop || S.userStop) kv('del', 'pending');
   S.userStop = false; keepAwake(false);
   S.busy = false; syncUploadBtn();
@@ -560,9 +577,11 @@ function viewOffers() {
     <select id="fStore"><option value="">Toate magazinele</option>${stores.map(s => `<option>${esc(s)}</option>`).join('')}</select>
     <input id="fQ" type="text" placeholder="Caută…">
   </div>
-  <label class="muted"><input type="checkbox" id="fPromo"> doar cu reducere în catalog</label>
+  <label class="muted"><input type="checkbox" id="fPromo"> doar cu reducere în catalog</label> &nbsp; <label class="muted"><input type="checkbox" id="fFav"> ★ doar favorite</label>
+  <div id="favBox"></div>
   <div id="stat" class="muted" style="margin:8px 0"></div><div id="list"></div>`;
-  $('#fSort').value = S.f.sort; $('#fStore').value = S.f.store; $('#fQ').value = S.f.q; $('#fPromo').checked = S.f.promo;
+  $('#fSort').value = S.f.sort; $('#fStore').value = S.f.store; $('#fQ').value = S.f.q; $('#fPromo').checked = S.f.promo; $('#fFav').checked = S.f.fav;
+  $('#fFav').onchange = e => { S.f.fav = e.target.checked; renderList(); };
   $('#fSort').onchange = e => { S.f.sort = e.target.value; renderList(); };
   $('#fStore').onchange = e => { S.f.store = e.target.value; renderList(); };
   $('#fQ').oninput = e => { S.f.q = e.target.value; renderList(); };
@@ -600,12 +619,12 @@ function cardHtml(r) {
     <div style="grid-column:1/3;display:flex;gap:8px"><button class="btn sm" data-act="save">Salvează</button>
     <button class="btn sm rd" data-act="del">${S.del[id] ? 'Sigur? Apasă din nou' : 'Șterge produsul'}</button></div></div>` : '';
   return `<div class="card" data-id="${esc(id)}">
-    <div class="top"><div class="nm">${esc(x.name)}</div><div class="pr">${f2(c.cur.p)} lei${c.cur.o ? `<s>${f2(c.cur.o)}</s>` : ''}</div></div>
+    <div class="top"><div class="nm">${favs.includes(id) ? '★ ' : ''}${esc(x.name)}</div><div class="pr">${f2(c.cur.p)} lei${c.cur.o ? `<s>${f2(c.cur.o)}</s>` : ''}</div></div>
     <div class="sub">${esc(x.store)} · ${x.weight_g ? Math.round(x.weight_g) + ' g' : 'gramaj ?'}${c.cur.ppk != null ? ' · ' + f2(c.cur.ppk) + ' lei/kg' : ''}</div>
     ${promoTag(x)}
     <div class="mx"><span><b>${f1(c.dens)}</b> g prot / 100 kcal</span><span><b>${f1(x.protein100)}</b> g/100 g</span><span><b>${f2(c.cost30)}</b> lei / 30 g prot</span></div>
     <div class="bd">${badges(r)}</div>
-    <div class="acts"><button class="btn sm ${inB ? 'sec' : ''}" data-act="basket">${inB ? 'În coș ✓' : '+ Coș'}</button><button class="btn sm sec" data-act="edit">${open ? 'Închide' : 'Editează'}</button></div>${ed}</div>`;
+    <div class="acts"><button class="btn sm ${inB ? 'sec' : ''}" data-act="basket">${inB ? 'În coș ✓' : '+ Coș'}</button><button class="btn sm sec" data-act="fav">${favs.includes(id) ? '★ Favorit' : '☆ Favorit'}</button><button class="btn sm sec" data-act="edit">${open ? 'Închide' : 'Editează'}</button></div>${ed}</div>`;
 }
 function renderList() {
   const el = $('#list'); if (!el) return;
@@ -616,7 +635,9 @@ function renderList() {
     && (r.c.dens != null && r.c.dens >= (profile.minDensity || 0))
     && (!f.store || r.x.store === f.store)
     && (!q || norm(r.x.name).includes(q))
-    && (!f.promo || r.c.claimed != null));
+    && (!f.promo || r.c.claimed != null) && (!f.fav || favs.includes(r.id)));
+  const fb = $('#favBox'), fr = activeRows().filter(r => favs.includes(r.id));
+  if (fb) fb.innerHTML = fr.length ? `<div class="card" style="border-color:#1f5a35"><div class="nm">⭐ Favoritele tale la reducere acum (${fr.length})</div>` + fr.map(r => `<div class="li"><div><div class="nm">${esc(r.x.name)}</div><div class="sub">${esc(r.x.store)} · ${f2(r.c.cur.p)} lei${r.c.real != null && r.c.real >= 5 ? ' · −' + Math.round(r.c.real) + '% vs mediană' : ''}</div>${promoTag(r.x)}</div>${plusBtn(r.id, 'plus2')}</div>`).join('') + '</div>' : '';
   const key = { scor: r => -score(r), dens: r => -(r.c.dens == null ? -1 : r.c.dens), cost: r => r.c.cost30 == null ? 1e9 : r.c.cost30, real: r => -(r.c.real == null ? -999 : r.c.real) }[f.sort];
   rows.sort((a, b) => key(a) - key(b));
   $('#stat').textContent = total ? `${rows.length} din ${total} oferte active (prag ≥ ${profile.minDensity} g prot/100 kcal, dietă: ${profile.diet})` : '';
@@ -780,11 +801,16 @@ document.addEventListener('click', async e => {
   const card = btn.closest('[data-id]'); if (!card) return;
   const id = card.dataset.id, act = btn.dataset.act;
   if (act === 'basket') {
-    basket = basket.includes(id) ? basket.filter(i => i !== id) : [...basket, id];
+    const adding = !basket.includes(id);
+    basket = adding ? [...basket, id] : basket.filter(i => i !== id);
     write(() => col.doc('basket').set({ items: basket }));
+    if (adding && !favs.includes(id)) { favs = [...favs, id]; write(() => col.doc('favs').set({ ids: favs })); }
     if (S.tab === 'basket') viewBasket();
     else if (S.tab === 'catalog') { syncBasketBtns(id); const x = products[id]; if (x) toast((basket.includes(id) ? 'Adăugat: ' : 'Scos: ') + x.name); }
     else renderList();
+  } else if (act === 'fav') {
+    favs = favs.includes(id) ? favs.filter(i => i !== id) : [...favs, id];
+    write(() => col.doc('favs').set({ ids: favs })); renderList();
   } else if (act === 'edit') { S.open[id] = !S.open[id]; renderList(); }
   else if (act === 'save') {
     const x = { ...products[id] }; card.querySelectorAll('[data-f]').forEach(i => { x[i.dataset.f] = num(i.value); });
@@ -796,6 +822,16 @@ document.addEventListener('click', async e => {
     await write(() => col.doc(id).delete()); renderList();
   }
 });
+function favAlert(ids) {
+  const rows = ids.map(id => ({ id, x: products[id], c: calc(products[id]) })).sort((a, b) => (b.c.real || 0) - (a.c.real || 0));
+  const m = document.createElement('div'); m.className = 'modal';
+  m.innerHTML = `<div><h3 style="margin:0 0 6px">🔔 ${rows.length} ${rows.length === 1 ? 'favorit e' : 'favorite sunt'} iar la reducere</h3>` +
+    rows.map(r => `<div class="li"><div><div class="nm">${esc(r.x.name)}</div><div class="sub">${esc(r.x.store)} · ${f2(r.c.cur.p)} lei${r.c.cur.o ? ' (era ' + f2(r.c.cur.o) + ')' : ''}${r.c.real != null ? ' · ' + (r.c.real >= 0 ? '−' : '+') + Math.abs(Math.round(r.c.real)) + '% vs mediană' : ''}</div>${promoTag(r.x)}</div></div>`).join('') +
+    `<div class="row" style="margin-top:12px"><button class="btn" id="mGo">Vezi în Oferte</button><button class="btn sec" id="mX">Închide</button></div></div>`;
+  document.body.appendChild(m);
+  m.querySelector('#mX').onclick = () => m.remove();
+  m.querySelector('#mGo').onclick = () => { m.remove(); S.f.fav = true; S.tab = 'offers'; render(); };
+}
 let deferredPrompt = null;
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredPrompt = e; $('#installBtn').style.display = ''; });
 window.addEventListener('appinstalled', () => { $('#installBtn').style.display = 'none'; deferredPrompt = null; toast('Aplicație instalată'); });
