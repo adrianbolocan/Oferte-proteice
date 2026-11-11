@@ -68,6 +68,14 @@ nav button{padding:10px 2px !important;font-size:13px !important}
 .bar div{height:100%;background:var(--ac);transition:width .3s}
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:30;display:flex;align-items:center;justify-content:center;padding:16px}
 .modal>div{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;max-width:520px;width:100%;max-height:80vh;overflow:auto}
+.lst{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;margin:12px 0}
+.lh{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:6px}
+.sec{font-size:13px;color:var(--mut);margin:14px 0 6px}
+.ic{display:flex;gap:12px;align-items:center;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:8px}
+.ph{width:64px;height:64px;border-radius:10px;background:#1c2330;display:flex;align-items:center;justify-content:center;font-size:26px;flex:none}
+.chk{width:28px;height:28px;border-radius:50%;border:2px solid #4b5160;background:transparent;color:#06220f;font-size:15px;padding:0;flex:none;line-height:1}
+.chk.on{background:var(--ac);border-color:var(--ac)}
+.xb{background:none;border:0;color:var(--mut);font-size:13px;padding:2px 4px}
 .tot{display:flex;flex-wrap:wrap;gap:6px 16px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px;margin:10px 0}
 .tot b{font-size:17px}
 </style>
@@ -760,12 +768,14 @@ function thumbHtml(e) {
 }
 function itemHtml(r, pidx) {
   const s = sn(r.id), dn = !!(bsnap[r.id] && bsnap[r.id].done), p = bp(r), o = s.o && s.o > p ? s.o : null, pct = o ? Math.round((o - p) / o * 100) : null;
-  return `<div class="li" data-id="${esc(r.id)}" style="${dn ? 'opacity:.5' : ''}"><div style="display:flex;gap:10px;align-items:center;flex:1;min-width:0">
-    <button class="plus2 ${dn ? 'on' : ''}" data-act="done" style="width:30px;height:30px;font-size:15px">${dn ? '✓' : ''}</button>${thumbHtml(pidx[r.id])}
-    <div style="min-width:0"><div class="nm" style="${dn ? 'text-decoration:line-through' : ''}">${esc(r.x.name)}</div>
-    <div class="sub"><b style="color:var(--tx);font-size:16px">${f2(p)} lei</b>${o ? ` <s>${f2(o)}</s>` : ''}${pct ? ` <span class="b g">−${pct}%</span>` : ''}</div>
-    <div class="sub">${r.x.weight_g ? Math.round(r.x.weight_g) + ' g' : ''}${r.c.cur.p !== p ? ' · acum ' + f2(r.c.cur.p) + ' lei' : ''}</div></div></div>
-    <button class="btn sm sec" data-act="basket">✕</button></div>`;
+  const ico = { alimente: '🥩', curatenie: '🧼', altele: '📦' }[catOf(r.x)];
+  const photo = pidx[r.id] ? thumbHtml(pidx[r.id]) : `<div class="ph">${ico}</div>`;
+  const mut = dn ? 'color:var(--mut)' : '';
+  return `<div class="ic" data-id="${esc(r.id)}">${photo}
+    <div style="flex:1;min-width:0"><div class="nm" style="font-size:14px;${mut}${dn ? ';text-decoration:line-through' : ''}">${esc(r.x.name)}</div>
+    <div style="display:flex;align-items:baseline;gap:6px;margin-top:2px"><span style="font-size:18px;font-weight:600;${mut}">${f2(p)} lei</span>${o ? `<s style="font-size:13px;color:var(--mut)">${f2(o)}</s>` : ''}</div>
+    <div style="margin-top:4px">${pct ? `<span class="b g">−${pct}%</span> ` : ''}<span class="sub">${r.x.weight_g ? Math.round(r.x.weight_g) + ' g' : ''}${r.c.cur.p !== p ? ' · acum ' + f2(r.c.cur.p) + ' lei' : ''}</span></div></div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:4px"><button class="chk ${dn ? 'on' : ''}" data-act="done" aria-label="Bifează">${dn ? '✓' : ''}</button><button class="xb" data-act="basket" aria-label="Scoate din listă">✕</button></div></div>`;
 }
 function listText(g) {
   const rows = g.ids.map(id => ({ id, x: products[id], c: calc(products[id]) }));
@@ -781,9 +791,10 @@ function viewBasket() {
     const tp = rows.reduce((a, r) => a + bp(r), 0), food = rows.filter(r => catOf(r.x) === 'alimente');
     const pr = food.reduce((a, r) => a + (r.c.protPack || 0), 0), kc = food.reduce((a, r) => a + (r.c.kcalPack || 0), 0);
     const exp = g.e && g.e < now, done = g.ids.filter(id => bsnap[id] && bsnap[id].done).length, sav = rows.reduce((a, r) => { const s = sn(r.id); return a + (s.o && s.o > bp(r) ? s.o - bp(r) : 0); }, 0);
-    const body = SECS.map(([k, t]) => { const rs = rows.filter(r => catOf(r.x) === k); return rs.length ? `<div class="muted" style="margin:12px 0 2px;font-weight:600">${t} (${rs.length})</div>` + rs.map(r => itemHtml(r, pidx)).join('') : ''; }).join('');
-    return `<div class="card"><div class="top"><div class="nm">🛒 Lista ${esc(g.store)} · ${esc(rangeRo(g.d, g.e))}</div><span class="b ${exp ? 'r' : 'g'}">${exp ? 'expirată' : 'activă'}</span></div>
-      <div class="mx"><span><b>${f2(tp)} lei</b></span><span>${rows.length} produse · ${done} luate</span>${sav > 0 ? `<span>economie <b>${f2(sav)} lei</b></span>` : ''}${food.length ? `<span><b>${Math.round(pr)} g</b> proteină</span><span><b>${Math.round(kc)}</b> kcal</span>` : ''}</div>${body}
+    const body = SECS.map(([k, t]) => { const rs = rows.filter(r => catOf(r.x) === k); return rs.length ? `<div class="sec">${t} · ${rs.length}</div>` + rs.map(r => itemHtml(r, pidx)).join('') : ''; }).join('');
+    return `<div class="lst"><div class="lh"><div><div style="font-weight:600;font-size:17px">${esc(g.store)}</div><div class="sub">${esc(rangeRo(g.d, g.e))} · <span style="color:var(${exp ? '--rd' : '--ac'})">${exp ? 'expirată' : 'activă'}</span></div></div>
+      <div style="text-align:right"><div style="font-weight:600;font-size:20px">${f2(tp)} lei</div>${sav > 0 ? `<div style="font-size:12px;color:var(--ac)">economie ${f2(sav)} lei</div>` : ''}</div></div>
+      <div class="sub">${rows.length} produse · ${done} luate${food.length ? ` · ${Math.round(pr)} g proteină · ${Math.round(kc)} kcal` : ''}</div>${body}
       <div class="acts" style="margin-top:12px"><button class="btn sm sec" data-gact="copy" data-gk="${esc(g.gk)}">Copiază lista</button><button class="btn sm rd" data-gact="clear" data-gk="${esc(g.gk)}">${S.del['g' + g.gk] ? 'Sigur? Apasă din nou' : 'Golește lista'}</button></div></div>`;
   }).join('');
   $('#main').innerHTML = `<div class="row"><button class="btn" id="sugBtn">Sugerează lista (AI)</button><button class="btn sec" id="recBtn">Rețete din listă</button></div>
