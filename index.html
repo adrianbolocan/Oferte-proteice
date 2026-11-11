@@ -168,14 +168,21 @@ async function uploadPage(blob, name) {
   if (error) throw error;
   return path;
 }
+try { const c = JSON.parse(localStorage.getItem('imgurls') || '{}'); for (const k in c) if (c[k].x > Date.now() + 864e5) urlCache[k] = c[k].u; } catch (e) {}
+function saveUrls(add) { try { const c = JSON.parse(localStorage.getItem('imgurls') || '{}'); Object.assign(c, add); for (const k in c) if (c[k].x < Date.now()) delete c[k]; localStorage.setItem('imgurls', JSON.stringify(c)); } catch (e) {} }
+let imgObs = null;
 async function fillImgs() {
   const imgs = [...document.querySelectorAll('img[data-asset]')];
   const need = [...new Set(imgs.map(i => i.dataset.asset).filter(a => !urlCache[a]))];
   if (need.length) {
-    const { data } = await sb.storage.from('pages').createSignedUrls(need, 3600 * 6);
-    (data || []).forEach(d => { if (d.signedUrl) urlCache[d.path] = d.signedUrl; });
+    const { data } = await sb.storage.from('pages').createSignedUrls(need, 7 * 86400);
+    const add = {}, x = Date.now() + 7 * 864e5;
+    (data || []).forEach(d => { if (d.signedUrl) { urlCache[d.path] = d.signedUrl; add[d.path] = { u: d.signedUrl, x }; } });
+    saveUrls(add);
   }
-  imgs.forEach(i => { const u = urlCache[i.dataset.asset]; if (u && i.src !== u) i.src = u; });
+  if (imgObs) imgObs.disconnect();
+  imgObs = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { const i = e.target, u = urlCache[i.dataset.asset]; if (u) i.src = u; imgObs.unobserve(i); } }), { rootMargin: '1200px 0px' });
+  imgs.forEach(i => { if (!i.getAttribute('src')) imgObs.observe(i); });
 }
 function viewLogin(msg) {
   document.querySelector('#nav').style.display = 'none';
@@ -617,7 +624,7 @@ function plusBtn(id, cls, extra) {
 }
 function pageHtml(p, n, total) {
   const items = (p.items || []).filter(i => products[i.id]);
-  const img = p.asset ? `<div class="pgscroll"><div class="pgimg${S.zoom ? ' z' : ''}"><img data-asset="${esc(p.asset)}" src="${esc(urlCache[p.asset] || '')}" alt="">${
+  const img = p.asset ? `<div class="pgscroll"><div class="pgimg${S.zoom ? ' z' : ''}"><img data-asset="${esc(p.asset)}" alt="" style="min-height:300px;background:#181b22">${
     items.filter(i => i.b).map(i => plusBtn(i.id, 'plus', `style="left:${i.b[2] * 100}%;top:${i.b[1] * 100}%" title="${esc(products[i.id].name)}"`)).join('')}</div></div>` : '';
   const list = items.map(i => {
     const x = products[i.id], c = calc(x);
