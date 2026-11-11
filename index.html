@@ -77,14 +77,33 @@ nav .midc svg{width:22px;height:22px}
 .bar div{height:100%;background:var(--ac);transition:width .3s}
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:30;display:flex;align-items:center;justify-content:center;padding:16px}
 .modal>div{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;max-width:520px;width:100%;max-height:80vh;overflow:auto}
-.lst{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;margin:12px 0}
-.lh{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:6px}
-.sec{font-size:13px;color:var(--mut);margin:14px 0 6px}
-.ic{display:flex;gap:12px;align-items:center;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:8px}
-.ph{width:64px;height:64px;border-radius:10px;background:#1c2330;display:flex;align-items:center;justify-content:center;font-size:26px;flex:none}
-.chk{width:28px;height:28px;border-radius:50%;border:2px solid #4b5160;background:transparent;color:#06220f;font-size:15px;padding:0;flex:none;line-height:1}
+.lst{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px 16px 14px;margin:14px 0}
+.lh{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.lst .st{font-weight:700;font-size:20px;letter-spacing:-.2px}
+.lst .pd{display:flex;align-items:center;gap:8px;margin-top:4px;color:var(--mut);font-size:13px}
+.lst .tg{font-size:11px;font-weight:600;border-radius:99px;padding:2px 8px;background:#102418;color:var(--ac)}
+.lst .tg.x{background:#2a1618;color:var(--rd)}
+.lst .tt{text-align:right}.lst .tt b{font-size:22px;font-weight:700;letter-spacing:-.3px}
+.lst .tt small{display:block;font-size:12px;color:var(--ac);margin-top:2px}
+.pgb{height:4px;background:var(--line);border-radius:99px;overflow:hidden;margin:14px 0 10px}
+.pgb div{height:100%;background:var(--ac);border-radius:99px;transition:width .3s}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips span{font-size:12px;color:var(--mut);background:var(--bg);border:1px solid var(--line);border-radius:99px;padding:3px 10px}
+.sec{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--mut);margin:20px 0 2px}
+.sec::after{content:"";flex:1;height:1px;background:var(--line)}
+.sec i{font-style:normal;font-weight:500;letter-spacing:0;text-transform:none;color:#7c8494}
+.ic{display:flex;gap:14px;align-items:center;padding:14px 0;border-bottom:1px solid #20242c}
+.ic:last-child{border-bottom:0}
+.ic .nm{font-size:15px;font-weight:500;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ic .pr{display:flex;align-items:baseline;gap:8px;margin-top:6px}
+.ic .pr b{font-size:19px;font-weight:700;letter-spacing:-.3px}
+.ic .pr s{font-size:13px;color:#6b7280}
+.ic .mt{display:flex;align-items:center;gap:8px;margin-top:6px;font-size:12px;color:var(--mut)}
+.ic .rt{display:flex;flex-direction:column;align-items:center;gap:10px}
+.ph{width:64px;height:64px;border-radius:12px;background:#1c2330;display:flex;align-items:center;justify-content:center;font-size:26px;flex:none}
+.chk{width:30px;height:30px;border-radius:50%;border:2px solid #4b5160;background:transparent;color:#06220f;font-size:16px;font-weight:700;padding:0;flex:none;line-height:1}
 .chk.on{background:var(--ac);border-color:var(--ac)}
-.xb{background:none;border:0;color:var(--mut);font-size:13px;padding:2px 4px}
+.xb{background:none;border:0;color:#5b6270;font-size:14px;padding:2px 6px}
 .tot{display:flex;flex-wrap:wrap;gap:6px 16px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px;margin:10px 0}
 .tot b{font-size:17px}
 </style>
@@ -775,18 +794,18 @@ function thumbHtml(e) {
   const b = e.b, line = (b[3] - b[1]) < 0.04; let x1, y1, rw;
   if (line) { rw = 0.46; x1 = Math.min(Math.max(b[0] - 0.02, 0), 1 - rw); y1 = Math.max(0, b[1] - 0.26); }
   else { rw = Math.max(0.12, b[2] - b[0]); x1 = b[0]; y1 = b[1]; }
-  return `<div style="position:relative;width:64px;height:64px;overflow:hidden;border-radius:8px;background:#0f1115;flex:none"><img data-asset="${esc(e.asset)}" alt="" style="position:absolute;left:0;top:0;width:${64 / rw}px;max-width:none;transform-origin:0 0;transform:translate(${-x1 * 100}%,${-y1 * 100}%)"></div>`;
+  return `<div style="position:relative;width:64px;height:64px;overflow:hidden;border-radius:12px;background:#0f1115;flex:none"><img data-asset="${esc(e.asset)}" alt="" style="position:absolute;left:0;top:0;width:${64 / rw}px;max-width:none;transform-origin:0 0;transform:translate(${-x1 * 100}%,${-y1 * 100}%)"></div>`;
 }
 function itemHtml(r, pidx) {
   const s = sn(r.id), dn = !!(bsnap[r.id] && bsnap[r.id].done), p = bp(r), o = s.o && s.o > p ? s.o : null, pct = o ? Math.round((o - p) / o * 100) : null;
   const ico = { alimente: '🥩', curatenie: '🧼', altele: '📦' }[catOf(r.x)];
   const photo = pidx[r.id] ? thumbHtml(pidx[r.id]) : `<div class="ph">${ico}</div>`;
-  const mut = dn ? 'color:var(--mut)' : '';
+  const mut = dn ? 'color:var(--mut);opacity:.6' : '';
   return `<div class="ic" data-id="${esc(r.id)}">${photo}
-    <div style="flex:1;min-width:0"><div class="nm" style="font-size:14px;${mut}${dn ? ';text-decoration:line-through' : ''}">${esc(r.x.name)}</div>
-    <div style="display:flex;align-items:baseline;gap:6px;margin-top:2px"><span style="font-size:18px;font-weight:600;${mut}">${f2(p)} lei</span>${o ? `<s style="font-size:13px;color:var(--mut)">${f2(o)}</s>` : ''}</div>
-    <div style="margin-top:4px">${pct ? `<span class="b g">−${pct}%</span> ` : ''}<span class="sub">${r.x.weight_g ? Math.round(r.x.weight_g) + ' g' : ''}${r.c.cur.p !== p ? ' · acum ' + f2(r.c.cur.p) + ' lei' : ''}</span></div></div>
-    <div style="display:flex;flex-direction:column;align-items:center;gap:4px"><button class="chk ${dn ? 'on' : ''}" data-act="done" aria-label="Bifează">${dn ? '✓' : ''}</button><button class="xb" data-act="basket" aria-label="Scoate din listă">✕</button></div></div>`;
+    <div style="flex:1;min-width:0"><div class="nm" style="${mut}${dn ? ';text-decoration:line-through' : ''}">${esc(r.x.name)}</div>
+    <div class="pr" style="${mut}"><b>${f2(p)} lei</b>${o ? `<s>${f2(o)}</s>` : ''}</div>
+    <div class="mt">${pct ? `<span class="b g">−${pct}%</span>` : ''}${r.x.weight_g ? `<span>${Math.round(r.x.weight_g)} g</span>` : ''}${r.c.cur.p !== p ? `<span>acum ${f2(r.c.cur.p)} lei</span>` : ''}</div></div>
+    <div class="rt"><button class="chk ${dn ? 'on' : ''}" data-act="done" aria-label="Bifează">${dn ? '✓' : ''}</button><button class="xb" data-act="basket" aria-label="Scoate din listă">✕</button></div></div>`;
 }
 function listText(g) {
   const rows = g.ids.map(id => ({ id, x: products[id], c: calc(products[id]) }));
@@ -802,11 +821,12 @@ function viewBasket() {
     const tp = rows.reduce((a, r) => a + bp(r), 0), food = rows.filter(r => catOf(r.x) === 'alimente');
     const pr = food.reduce((a, r) => a + (r.c.protPack || 0), 0), kc = food.reduce((a, r) => a + (r.c.kcalPack || 0), 0);
     const exp = g.e && g.e < now, done = g.ids.filter(id => bsnap[id] && bsnap[id].done).length, sav = rows.reduce((a, r) => { const s = sn(r.id); return a + (s.o && s.o > bp(r) ? s.o - bp(r) : 0); }, 0);
-    const body = SECS.map(([k, t]) => { const rs = rows.filter(r => catOf(r.x) === k); return rs.length ? `<div class="sec">${t} · ${rs.length}</div>` + rs.map(r => itemHtml(r, pidx)).join('') : ''; }).join('');
-    return `<div class="lst"><div class="lh"><div><div style="font-weight:600;font-size:17px">${esc(g.store)}</div><div class="sub">${esc(rangeRo(g.d, g.e))} · <span style="color:var(${exp ? '--rd' : '--ac'})">${exp ? 'expirată' : 'activă'}</span></div></div>
-      <div style="text-align:right"><div style="font-weight:600;font-size:20px">${f2(tp)} lei</div>${sav > 0 ? `<div style="font-size:12px;color:var(--ac)">economie ${f2(sav)} lei</div>` : ''}</div></div>
-      <div class="sub">${rows.length} produse · ${done} luate${food.length ? ` · ${Math.round(pr)} g proteină · ${Math.round(kc)} kcal` : ''}</div>${body}
-      <div class="acts" style="margin-top:12px"><button class="btn sm sec" data-gact="copy" data-gk="${esc(g.gk)}">Copiază lista</button><button class="btn sm rd" data-gact="clear" data-gk="${esc(g.gk)}">${S.del['g' + g.gk] ? 'Sigur? Apasă din nou' : 'Golește lista'}</button></div></div>`;
+    const body = SECS.map(([k, t]) => { const rs = rows.filter(r => catOf(r.x) === k); return rs.length ? `<div class="sec">${t}<i>${rs.length} · ${f2(rs.reduce((a, r) => a + bp(r), 0))} lei</i></div>` + rs.map(r => itemHtml(r, pidx)).join('') : ''; }).join('');
+    return `<div class="lst"><div class="lh"><div><div class="st">${esc(g.store)}</div><div class="pd"><span>${esc(rangeRo(g.d, g.e))}</span><span class="tg ${exp ? 'x' : ''}">${exp ? 'expirată' : 'activă'}</span></div></div>
+      <div class="tt"><b>${f2(tp)} lei</b>${sav > 0 ? `<small>economisești ${f2(sav)} lei</small>` : ''}</div></div>
+      <div class="pgb"><div style="width:${rows.length ? Math.round(done / rows.length * 100) : 0}%"></div></div>
+      <div class="chips"><span>${done}/${rows.length} luate</span>${food.length ? `<span>${Math.round(pr)} g proteină</span><span>${Math.round(kc)} kcal</span>` : ''}</div>${body}
+      <div class="acts" style="margin-top:16px"><button class="btn sm sec" data-gact="copy" data-gk="${esc(g.gk)}">Copiază lista</button><button class="btn sm rd" data-gact="clear" data-gk="${esc(g.gk)}">${S.del['g' + g.gk] ? 'Sigur? Apasă din nou' : 'Golește lista'}</button></div></div>`;
   }).join('');
   $('#main').innerHTML = `<div class="row"><button class="btn" id="sugBtn">Sugerează lista (AI)</button><button class="btn sec" id="recBtn">Rețete din listă</button></div>
   <div id="aiMsg" class="muted">${esc(S.suggest)}</div>
