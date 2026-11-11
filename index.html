@@ -498,6 +498,36 @@ async function pageLines(pg) {
   }
   return lines;
 }
+async function pageImgs(pg) {
+  const vp = pg.getViewport({ scale: 1 }), W = vp.width, H = vp.height, O = window.pdfjsLib.OPS, ol = await pg.getOperatorList();
+  const mul = (m, n) => [m[0] * n[0] + m[2] * n[1], m[1] * n[0] + m[3] * n[1], m[0] * n[2] + m[2] * n[3], m[1] * n[2] + m[3] * n[3], m[0] * n[4] + m[2] * n[5] + m[4], m[1] * n[4] + m[3] * n[5] + m[5]];
+  let ctm = vp.transform.slice(); const st = [], out = [];
+  for (let i = 0; i < ol.fnArray.length; i++) {
+    const fn = ol.fnArray[i], a = ol.argsArray[i];
+    if (fn === O.save) st.push(ctm);
+    else if (fn === O.restore) ctm = st.pop() || ctm;
+    else if (fn === O.transform) ctm = mul(ctm, a);
+    else if (fn === O.paintFormXObjectBegin) { st.push(ctm); if (a && a[0]) ctm = mul(ctm, a[0]); }
+    else if (fn === O.paintFormXObjectEnd) ctm = st.pop() || ctm;
+    else if (fn === O.paintImageXObject || fn === O.paintInlineImageXObject || fn === O.paintJpegXObject) {
+      const xs = [], ys = [];
+      for (const [x, y] of [[0, 0], [1, 0], [0, 1], [1, 1]]) { xs.push((ctm[0] * x + ctm[2] * y + ctm[4]) / W); ys.push((ctm[1] * x + ctm[3] * y + ctm[5]) / H); }
+      const r = [Math.max(0, Math.min(...xs)), Math.max(0, Math.min(...ys)), Math.min(1, Math.max(...xs)), Math.min(1, Math.max(...ys))], w = r[2] - r[0], hh = r[3] - r[1];
+      if (w > 0.06 && w < 0.75 && hh > 0.04 && hh < 0.6 && w * hh < 0.35) out.push(r.map(v => +v.toFixed(4)));
+    }
+  }
+  return { rects: out, ar: +(H / W).toFixed(3) };
+}
+function photoFor(ln, rects, ar) {
+  if (!ln || !rects || !rects.length) return null;
+  const cx = (ln.x + ln.x1) / 2, cy = ln.y; let best = null, bd = 0.22;
+  for (const r of rects) {
+    const dx = Math.max(r[0] - cx, 0, cx - r[2]), dy = Math.max(r[1] - cy, 0, cy - r[3]) * (ar || 1.4);
+    const d = Math.hypot(dx, dy) + (r[2] - r[0]) * (r[3] - r[1]) * 0.3;
+    if (d < bd) { bd = d; best = r; }
+  }
+  return best;
+}
 async function renderBlob(pg) {
   const v0 = pg.getViewport({ scale: 1 }), vp = pg.getViewport({ scale: 1300 / v0.width });
   const c = document.createElement('canvas'); c.width = vp.width; c.height = vp.height;
@@ -515,14 +545,14 @@ async function processTextBatch(doc, fk, tp) {
       const m = String(it.l || '').match(/^p(\d+)l(\d+)$/), pi = m ? +m[1] : tp[0].i;
       const pgT = tp.find(p => p.i === pi) || tp[0], ln = m ? pgT.lines[+m[2]] : null;
       const id = await upsertItem({ name: it.n, canonical: it.c, brand: it.b, weight_g: it.g, price: it.p, old_price: it.o, kcal100: it.k, protein100: it.pr, fat100: it.f, tags: it.t, cat: it.ct, est: true }, S.uStore, S.uDate);
-      if (id) { c++; (per[pgT.i] = per[pgT.i] || []).push({ id, b: ln ? [Math.max(0, ln.x), Math.max(0, ln.y - 0.012), Math.min(1, Math.max(ln.x1, ln.x + 0.04)), Math.min(1, ln.y + 0.012)] : null }); }
+      if (id) { c++; (per[pgT.i] = per[pgT.i] || []).push({ id, b: ln ? [Math.max(0, ln.x), Math.max(0, ln.y - 0.012), Math.min(1, Math.max(ln.x1, ln.x + 0.04)), Math.min(1, ln.y + 0.012)] : null, ph: photoFor(ln, pgT.imgs, pgT.ar) }); }
     }
     let note = '';
     for (const p of tp) {
       const pid = pidOf(fk, p.i), items = per[p.i] || [];
       let asset = null;
       if (items.length) { try { asset = await uploadPage(await renderBlob(await doc.getPage(p.i)), S.uStore + '-' + S.uDate + '-' + fk + '-' + p.i); } catch (e) { note = ' (imagini nesalvate: ' + (e.message || e.code) + ')'; } }
-      const pd = { store: S.uStore, date: S.uDate, fk, idx: p.i, asset, items };
+      const pd = { store: S.uStore, date: S.uDate, fk, idx: p.i, asset, items, ar: p.ar || null };
       pages[pid] = pd; await write(() => col.doc(pid).set(pd));
     }
     S.log[li] = '✓ ' + label + ': ' + c + ' produse' + note; showLog(); return c;
@@ -569,10 +599,19 @@ async function runUpload() {
             const r = findDates(lines.map(l => l.s).join(' ')) || (i === 2 ? findDates(f.name.replace(/[_-]/g, ' ').replace(/(\d{1,2}) (\d{1,2})/, '$1.$2')) : null);
             if (r) { S.uDate = r[0]; S.uEnd = r[1]; S._dateSet = true; log('📅 Perioadă detectată: ' + fmtD(r[0]) + '–' + fmtD(r[1])); const a = $('#uDate'), b = $('#uEnd'); if (a) { a.value = r[0]; b.value = r[1]; } }
           }
-          if (lines.reduce((s, l) => s + l.s.length, 0) >= 40) tps.push({ i, lines }); else imgs.push(i);
+          let pi = { rects: [], ar: null }; try { pi = await pageImgs(pg); } catch (e) {}
+          if (lines.reduce((s, l) => s + l.s.length, 0) >= 40) tps.push({ i, lines, imgs: pi.rects, ar: pi.ar }); else imgs.push(i);
         }
         if (S.autoDate && !S._dateSet) log('📅 Data nu s-a găsit în catalog, folosesc ' + fmtD(S.uDate) + '–' + fmtD(S.uEnd));
         const todo = tps.filter(p => !pageDone(fk, p.i)), todoImg = imgs.filter(i => !pageDone(fk, i));
+        let fixed = 0;
+        for (const p of tps) {
+          const pid = pidOf(fk, p.i), pd = pages[pid]; if (!pd || !pageDone(fk, p.i) || todo.includes(p)) continue;
+          let ch = false;
+          for (const it of (pd.items || [])) if (it.b && !it.ph && (it.b[3] - it.b[1]) < 0.04) { const ph = photoFor({ x: it.b[0], x1: it.b[2], y: (it.b[1] + it.b[3]) / 2 }, p.imgs, p.ar); if (ph) { it.ph = ph; ch = true; fixed++; } }
+          if (ch) { pd.ar = p.ar; await write(() => col.doc(pid).set(pd)); }
+        }
+        if (fixed) log('🖼 Poze corectate la ' + fixed + ' produse (fără AI)');
         const skipped = n - todo.length - todoImg.length;
         log(`${tps.length} pagini cu text, ${imgs.length} doar imagine` + (skipped ? `, ${skipped} deja procesate` : ''));
         for (let k = 0; k < todo.length; k += TBATCH) { const tp = todo.slice(k, k + TBATCH); tasks.push({ n: tp.length, run: () => processTextBatch(doc, fk, tp) }); }
@@ -793,7 +832,7 @@ function basketGroups() {
 const SECS = [['alimente', '🥩 Alimente'], ['curatenie', '🧼 Curățenie'], ['altele', '📦 Altele']];
 function pageIndex() {
   const m = {};
-  for (const pg of Object.values(pages)) if (pg.asset) for (const it of (pg.items || [])) if (it.b && (!m[it.id] || pg.date > m[it.id].d)) m[it.id] = { asset: pg.asset, b: it.b, d: pg.date };
+  for (const pg of Object.values(pages)) if (pg.asset) for (const it of (pg.items || [])) if (it.b && (!m[it.id] || pg.date > m[it.id].d)) m[it.id] = { asset: pg.asset, b: it.b, d: pg.date, ph: it.ph, ar: pg.ar };
   return m;
 }
 function thumbHtml(e) {
@@ -812,6 +851,10 @@ function itemHtml(r, pidx) {
     if (line) { rw = 0.46; x1 = Math.min(Math.max(b[0] - 0.02, 0), 1 - rw); y1 = Math.max(0, b[1] - 0.26); }
     else { rw = Math.max(0.12, b[2] - b[0]); x1 = b[0]; y1 = b[1]; }
     img = `<img data-asset="${esc(e.asset)}" alt="" style="width:${100 / rw}%;transform:translate(${-x1 * 100}%,${-y1 * 100}%)">`;
+    if (e.ph) {
+      const q = e.ph, ar = e.ar || 1.414, bw = q[2] - q[0], bh = (q[3] - q[1]) * ar, sc = Math.min(1 / bw, 0.75 / bh);
+      img = `<img data-asset="${esc(e.asset)}" alt="" style="width:${sc * 100}%;left:${((1 - bw * sc) / 2 - q[0] * sc) * 100}%;top:${((0.75 - bh * sc) / 2 - q[1] * ar * sc) / 0.75 * 100}%">`;
+    }
   }
   const meta = [r.x.weight_g ? Math.round(r.x.weight_g) + ' g' : '', r.c.cur.p !== p ? 'acum ' + f2(r.c.cur.p) : ''].filter(Boolean).join(' · ');
   return `<div class="tl ${dn ? 'dn' : ''}" data-id="${esc(r.id)}"><div class="im" data-act="done" role="button" aria-label="Bifează">${img}</div>
