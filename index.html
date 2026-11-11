@@ -717,6 +717,7 @@ function snapTag(r) {
   const now = r.c.cur.p !== s.p ? ` · acum ${f2(r.c.cur.p)} lei (${fmtD(r.c.cur.d)})` : '';
   return `<div class="sub">📅 ${fmtD(s.d)}${s.e ? '–' + fmtD(s.e) : ''} · preț salvat ${f2(s.p)} lei${s.o ? ' (era ' + f2(s.o) + ')' : ''}${now}</div>`;
 }
+const sn = id => bsnap[id] || snapOf(id) || {};
 const bp = r => (bsnap[r.id] && bsnap[r.id].p != null) ? bsnap[r.id].p : r.c.cur.p;
 function basketRows() {
   return basket.map(id => products[id] && products[id].history ? { id, x: products[id], c: calc(products[id]) } : null).filter(Boolean);
@@ -758,7 +759,7 @@ function thumbHtml(e) {
   return `<div style="position:relative;width:64px;height:64px;overflow:hidden;border-radius:8px;background:#0f1115;flex:none"><img data-asset="${esc(e.asset)}" alt="" style="position:absolute;left:0;top:0;width:${64 / rw}px;max-width:none;transform-origin:0 0;transform:translate(${-x1 * 100}%,${-y1 * 100}%)"></div>`;
 }
 function itemHtml(r, pidx) {
-  const s = bsnap[r.id] || {}, dn = !!s.done, p = bp(r), o = s.o && s.o > p ? s.o : null, pct = o ? Math.round((o - p) / o * 100) : null;
+  const s = sn(r.id), dn = !!(bsnap[r.id] && bsnap[r.id].done), p = bp(r), o = s.o && s.o > p ? s.o : null, pct = o ? Math.round((o - p) / o * 100) : null;
   return `<div class="li" data-id="${esc(r.id)}" style="${dn ? 'opacity:.5' : ''}"><div style="display:flex;gap:10px;align-items:center;flex:1;min-width:0">
     <button class="plus2 ${dn ? 'on' : ''}" data-act="done" style="width:30px;height:30px;font-size:15px">${dn ? '✓' : ''}</button>${thumbHtml(pidx[r.id])}
     <div style="min-width:0"><div class="nm" style="${dn ? 'text-decoration:line-through' : ''}">${esc(r.x.name)}</div>
@@ -768,7 +769,7 @@ function itemHtml(r, pidx) {
 }
 function listText(g) {
   const rows = g.ids.map(id => ({ id, x: products[id], c: calc(products[id]) }));
-  const ln = r => { const s = bsnap[r.id] || {}, p = bp(r), o = s.o && s.o > p ? s.o : null; return `☐ ${r.x.name} — ${f2(p)} lei` + (o ? ` (era ${f2(o)}, −${Math.round((o - p) / o * 100)}%)` : ''); };
+  const ln = r => { const s = sn(r.id), p = bp(r), o = s.o && s.o > p ? s.o : null; return `☐ ${r.x.name} — ${f2(p)} lei` + (o ? ` (era ${f2(o)}, −${Math.round((o - p) / o * 100)}%)` : ''); };
   let t = `Lista cumpărături ${g.store} · ${rangeRo(g.d, g.e)}\n`;
   SECS.forEach(([k, n]) => { const rs = rows.filter(r => catOf(r.x) === k); if (rs.length) t += `\n${n}\n` + rs.map(ln).join('\n') + '\n'; });
   return t + `\nTotal: ${f2(rows.reduce((a, r) => a + bp(r), 0))} lei`;
@@ -779,7 +780,7 @@ function viewBasket() {
     const rows = g.ids.map(id => ({ id, x: products[id], c: calc(products[id]) }));
     const tp = rows.reduce((a, r) => a + bp(r), 0), food = rows.filter(r => catOf(r.x) === 'alimente');
     const pr = food.reduce((a, r) => a + (r.c.protPack || 0), 0), kc = food.reduce((a, r) => a + (r.c.kcalPack || 0), 0);
-    const exp = g.e && g.e < now, done = g.ids.filter(id => bsnap[id] && bsnap[id].done).length, sav = rows.reduce((a, r) => { const s = bsnap[r.id] || {}; return a + (s.o && s.o > bp(r) ? s.o - bp(r) : 0); }, 0);
+    const exp = g.e && g.e < now, done = g.ids.filter(id => bsnap[id] && bsnap[id].done).length, sav = rows.reduce((a, r) => { const s = sn(r.id); return a + (s.o && s.o > bp(r) ? s.o - bp(r) : 0); }, 0);
     const body = SECS.map(([k, t]) => { const rs = rows.filter(r => catOf(r.x) === k); return rs.length ? `<div class="muted" style="margin:12px 0 2px;font-weight:600">${t} (${rs.length})</div>` + rs.map(r => itemHtml(r, pidx)).join('') : ''; }).join('');
     return `<div class="card"><div class="top"><div class="nm">🛒 Lista ${esc(g.store)} · ${esc(rangeRo(g.d, g.e))}</div><span class="b ${exp ? 'r' : 'g'}">${exp ? 'expirată' : 'activă'}</span></div>
       <div class="mx"><span><b>${f2(tp)} lei</b></span><span>${rows.length} produse · ${done} luate</span>${sav > 0 ? `<span>economie <b>${f2(sav)} lei</b></span>` : ''}${food.length ? `<span><b>${Math.round(pr)} g</b> proteină</span><span><b>${Math.round(kc)}</b> kcal</span>` : ''}</div>${body}
@@ -891,7 +892,7 @@ document.addEventListener('click', async e => {
     else if (S.tab === 'catalog') { syncBasketBtns(id); const x = products[id]; if (x) toast((basket.includes(id) ? 'Adăugat: ' : 'Scos: ') + x.name); }
     else renderList();
   } else if (act === 'done') {
-    if (bsnap[id]) { bsnap[id] = { ...bsnap[id], done: !bsnap[id].done }; write(() => col.doc('basket').set({ items: basket, snap: bsnap })); viewBasket(); }
+    { const cur = bsnap[id] || snapOf(id); if (cur) { bsnap[id] = { ...cur, done: !cur.done }; write(() => col.doc('basket').set({ items: basket, snap: bsnap })); viewBasket(); } }
   } else if (act === 'fav') {
     favs = favs.includes(id) ? favs.filter(i => i !== id) : [...favs, id];
     write(() => col.doc('favs').set({ ids: favs })); renderList();
