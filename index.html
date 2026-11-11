@@ -105,7 +105,7 @@ const DEF_PROFILE = { kcal: 2200, protein: 150, diet: 'omnivor', exclude: '', mi
 const SB_URL = 'https://senwituyejxxkkxukggn.supabase.co', SB_KEY = 'sb_publishable_1-IHJpTJGxPaSDcWg3x_Xg_mvDXeEMZ';
 let sb = null, col = null, uid = null, loaded = false, assets = null, cfg = { gkey: '', model: '' }, urlCache = {};
 let products = {}, pages = {}, profile = { ...DEF_PROFILE }, basket = [];
-let S = { cat: '', zoom: false, tab: 'offers', f: { sort: 'scor', store: '', q: '', promo: false }, open: {}, del: {}, log: [], recipes: '', suggest: '', busy: false, stop: false, files: [], uStore: 'Lidl', uDate: today(), uEnd: addDays(today(), 6) };
+let S = { cat: '', zoom: false, tab: 'offers', f: { sort: 'scor', store: '', q: '', promo: false }, open: {}, del: {}, log: [], recipes: '', suggest: '', busy: false, stop: false, files: [], uStore: 'Lidl', uDate: today(), uEnd: addDays(today(), 6), autoDate: true };
 
 let wq = Promise.resolve();
 function write(fn) {
@@ -319,11 +319,11 @@ function parseJson(txt) {
   throw new Error('răspuns fără JSON');
 }
 const extractPrompt = store => `Ești un extractor de date din cataloage de promoții de supermarket din România. Imaginea este o pagină din catalogul magazinului ${store}.
-Extrage DOAR produsele alimentare (carne, pește, lactate, ouă, conserve, legume, fructe, paste, orez, pâine, nuci, cereale, băuturi fără alcool etc.). Ignoră non-alimentele și alcoolul.
+Extrage TOATE produsele cu preț (alimentare și nealimentare). La nealimentare: kcal100/protein100/fat100 = null și tag "nealimentar".
 Răspunde STRICT cu un array JSON, fără alt text. Fiecare element:
-{"name":"denumirea completă din catalog","canonical":"denumire generică scurtă, fără brand și gramaj (ex: piept de pui, iaurt grecesc, ouă M, ton în ulei)","brand":"brand sau ''","weight_g":greutatea netă a ambalajului în grame (litri ×1000; pentru ouă estimează 60 g/ou; null dacă nu poți),"price":prețul promoțional curent în lei,"old_price":prețul vechi/barat sau null,"kcal100":kcal la 100 g (estimare pentru acel tip de produs),"protein100":proteină g/100 g,"fat100":grăsime g/100 g,"tags":[din: "carne","pește","lactate","ouă","vegetal"],"est":true,"box_2d":[ymin,xmin,ymax,xmax]}
+{"name":"denumirea completă din catalog","canonical":"denumire generică scurtă, fără brand și gramaj (ex: piept de pui, iaurt grecesc, ouă M, ton în ulei)","brand":"brand sau ''","weight_g":greutatea netă a ambalajului în grame (litri ×1000; pentru ouă estimează 60 g/ou; null dacă nu poți),"price":prețul promoțional curent în lei,"old_price":prețul vechi/barat sau null,"kcal100":kcal la 100 g (estimare pentru acel tip de produs),"protein100":proteină g/100 g,"fat100":grăsime g/100 g,"tags":[din: "carne","pește","lactate","ouă","vegetal","nealimentar"],"est":true,"box_2d":[ymin,xmin,ymax,xmax]}
 "box_2d" = chenarul produsului pe imagine (cu tot cu preț), în formatul standard [ymin, xmin, ymax, xmax] normalizat 0–1000.
-Reguli: preț cu punct zecimal (în catalog apare adesea ca "5" mare și "99" mic = 5.99). Dacă prețul e per kg fără ambalaj fix: weight_g=1000 și price=prețul/kg. Pentru oferte gen "2+1" sau "-50% la al doilea", dacă e clar folosește prețul efectiv per bucată. Dacă pagina nu are produse alimentare: [].`;
+Reguli: preț cu punct zecimal (în catalog apare adesea ca "5" mare și "99" mic = 5.99). Dacă prețul e per kg fără ambalaj fix: weight_g=1000 și price=prețul/kg. Pentru oferte gen "2+1" sau "-50% la al doilea", dacă e clar folosește prețul efectiv per bucată. Dacă pagina nu are produse: [].`;
 const batchNote = n => n > 1 ? `\nATENȚIE: primești ${n} imagini = ${n} pagini, numerotate 1..${n} în ordinea primirii. Pune la fiecare produs câmpul "page" cu numărul imaginii pe care apare; box_2d e relativ la acea imagine. Returnează un singur array cu produsele din toate paginile.` : '';
 
 /* ---------- imagini / pdf ---------- */
@@ -384,40 +384,118 @@ async function processBatch(js) {
   }
 }
 const PAR = 2, BATCH = 4;
+const TBATCH = 8;
+const textPrompt = store => `Primești textul extras din paginile unui catalog de promoții ${store} (România). Fiecare rând: ID [x,y] text — x,y = poziția pe pagină în procente (0–100, y de sus în jos). Prețurile pot fi sparte în bucăți apropiate (ex: "4" și "99" = 4.99), lângă denumire sau sub ea; folosește pozițiile ca să le asociezi corect.
+Extrage TOATE produsele cu preț (alimentare și nealimentare). Răspunde STRICT cu un array JSON; fiecare element:
+{"l":"ID-ul rândului cu denumirea produsului","n":"denumire completă","c":"denumire generică scurtă, fără brand și gramaj","b":"brand sau ''","g":greutate netă în g (litri×1000, ouă 60 g/buc; null dacă nu se aplică),"p":preț promoțional lei,"o":preț vechi/barat sau null,"k":kcal/100 g estimat (null la nealimentare),"pr":proteină g/100 g,"f":grăsime g/100 g,"t":[din "carne","pește","lactate","ouă","vegetal","nealimentar"]}
+Reguli: preț per kg fără ambalaj fix → g=1000 și p=prețul/kg. La "2+1" sau "-50% la al doilea" folosește prețul efectiv per bucată doar dacă e clar. Nu inventa produse. Dacă nu sunt produse: [].`;
+function isoD(d, m, y) { return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`; }
+function guessYear(m) { const n = new Date(), cm = n.getMonth() + 1; return m < cm - 6 ? n.getFullYear() + 1 : (m > cm + 6 ? n.getFullYear() - 1 : n.getFullYear()); }
+function okD(s) { const t = new Date(s + 'T12:00:00'), n = Date.now(); return !isNaN(t) && Math.abs(t - n) < 70 * 864e5; }
+function findDates(t) {
+  t = String(t || '').replace(/\s+/g, ' ');
+  let m = t.match(/(\d{1,2})[.\-\/](\d{1,2})(?:[.\-\/](\d{2,4}))?\.?\s*(?:-|–|—|până la|pana la)\s*(\d{1,2})[.\-\/](\d{1,2})(?:[.\-\/](\d{2,4}))?/i);
+  if (m) {
+    const y1 = m[3] ? (+m[3] < 100 ? 2000 + +m[3] : +m[3]) : guessYear(+m[2]), y2 = m[6] ? (+m[6] < 100 ? 2000 + +m[6] : +m[6]) : guessYear(+m[5]);
+    const s = isoD(+m[1], +m[2], y1), e = isoD(+m[4], +m[5], y2);
+    if (okD(s) && okD(e) && e >= s) return [s, e];
+  }
+  m = t.match(/(?:luni|marți|marti|miercuri|joi|vineri|sâmbătă|sambata|duminică|duminica|valabil|începând|incepand|de la|din)\D{0,12}?(\d{1,2})[.\-\/_](\d{1,2})/i);
+  if (m) { const s = isoD(+m[1], +m[2], guessYear(+m[2])); if (okD(s)) return [s, addDays(s, 6)]; }
+  return null;
+}
+async function pageLines(pg) {
+  const vp = pg.getViewport({ scale: 1 }), tc = await pg.getTextContent(), W = vp.width, H = vp.height;
+  const its = tc.items.filter(i => i.str && i.str.trim()).map(i => {
+    const [x, y] = vp.convertToViewportPoint(i.transform[4], i.transform[5]);
+    return { s: i.str.trim(), x: x / W, y: (y - (i.height || 0) * 0.5) / H, x1: (x + (i.width || 0)) / W };
+  }).sort((a, b) => a.y - b.y || a.x - b.x);
+  const lines = [];
+  for (const it of its) {
+    const l = lines.find(l => Math.abs(l.y - it.y) < 0.006 && it.x - l.x1 < 0.03 && it.x >= l.x - 0.005);
+    if (l) { l.s += ' ' + it.s; l.x1 = Math.max(l.x1, it.x1); } else lines.push({ ...it });
+  }
+  return lines;
+}
+async function renderBlob(pg) {
+  const v0 = pg.getViewport({ scale: 1 }), vp = pg.getViewport({ scale: 1300 / v0.width });
+  const c = document.createElement('canvas'); c.width = vp.width; c.height = vp.height;
+  await pg.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
+  return toBlob(c);
+}
+async function processTextBatch(doc, fk, tp) {
+  const label = 'p.' + tp[0].i + (tp.length > 1 ? '–' + tp[tp.length - 1].i : '');
+  const li = S.log.push('… ' + label + ' (text)') - 1; showLog();
+  try {
+    const txt = tp.map(p => `=== PAGINA ${p.i} ===\n` + p.lines.map((l, k) => `p${p.i}l${k} [${Math.round(l.x * 100)},${Math.round(l.y * 100)}] ${l.s}`).join('\n')).join('\n');
+    const arr = parseJson(await ask(textPrompt(S.uStore) + '\n\n' + txt, null, s => { S.log[li] = '⏳ ' + label + ': limită Gemini, aștept ' + s + ' s'; showLog(); }));
+    const per = {}; let c = 0;
+    for (const it of (Array.isArray(arr) ? arr : [])) {
+      const m = String(it.l || '').match(/^p(\d+)l(\d+)$/), pi = m ? +m[1] : tp[0].i;
+      const pgT = tp.find(p => p.i === pi) || tp[0], ln = m ? pgT.lines[+m[2]] : null;
+      const id = await upsertItem({ name: it.n, canonical: it.c, brand: it.b, weight_g: it.g, price: it.p, old_price: it.o, kcal100: it.k, protein100: it.pr, fat100: it.f, tags: it.t, est: true }, S.uStore, S.uDate);
+      if (id) { c++; (per[pgT.i] = per[pgT.i] || []).push({ id, b: ln ? [Math.max(0, ln.x), Math.max(0, ln.y - 0.012), Math.min(1, Math.max(ln.x1, ln.x + 0.04)), Math.min(1, ln.y + 0.012)] : null }); }
+    }
+    let note = '';
+    for (const p of tp) {
+      const pid = pidOf(fk, p.i), items = per[p.i] || [];
+      let asset = null;
+      if (items.length) { try { asset = await uploadPage(await renderBlob(await doc.getPage(p.i)), S.uStore + '-' + S.uDate + '-' + fk + '-' + p.i); } catch (e) { note = ' (imagini nesalvate: ' + (e.message || e.code) + ')'; } }
+      const pd = { store: S.uStore, date: S.uDate, fk, idx: p.i, asset, items };
+      pages[pid] = pd; await write(() => col.doc(pid).set(pd));
+    }
+    S.log[li] = '✓ ' + label + ': ' + c + ' produse' + note; showLog(); return c;
+  } catch (e) {
+    S.log[li] = '✗ ' + label + ': ' + ((e && (e.message || e.code)) || 'eroare'); showLog();
+    if (e && (e.code === 'rate_limited' || e.code === 'not_granted')) { S.stop = true; log('Oprit: ' + (e.message || e.code)); }
+    return 0;
+  }
+}
 async function runUpload() {
   if (S.busy || !S.files.length) return;
   S.busy = true; S.stop = false; S.log = []; S.prog = { done: 0, total: 0, start: Date.now(), found: 0 }; syncUploadBtn(); showProg();
   if (!cfg.gkey || !cfg.model) { log('Adaugă cheia Gemini în Profil.'); S.busy = false; syncUploadBtn(); return; }
-  const runId = Date.now().toString(36), jobs = []; let ii = 0;
+  const tasks = [];
   for (const f of S.files) {
     try {
       if (/pdf$/i.test(f.type) || /\.pdf$/i.test(f.name)) {
         await loadPdfjs();
         const doc = await window.pdfjsLib.getDocument({ data: await f.arrayBuffer() }).promise;
         const n = doc.numPages, fk = 'f' + norm(f.name) + f.size;
-        { let sk = 0; for (let i = 1; i <= n; i++) if (pageDone(fk, i)) sk++; log(f.name + ': ' + n + ' pagini' + (sk ? ', ' + sk + ' deja procesate (sar peste ele)' : '')); }
-        for (let i = 1; i <= n; i++) if (!pageDone(fk, i)) jobs.push({ label: f.name + ' p.' + i, fk, idx: i, get: async () => {
-          const pg = await doc.getPage(i), v0 = pg.getViewport({ scale: 1 }), vp = pg.getViewport({ scale: 1300 / v0.width });
-          const c = document.createElement('canvas'); c.width = vp.width; c.height = vp.height;
-          await pg.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
-          return toBlob(c);
-        } });
-      } else { const fk = 'i' + norm(f.name) + f.size; if (!pageDone(fk, 1)) jobs.push({ label: f.name, fk, idx: 1, get: () => imgBlob(f) }); else log(f.name + ': deja procesat'); }
+        log(f.name + ': ' + n + ' pagini, citesc textul…');
+        const tps = [], imgs = [];
+        for (let i = 1; i <= n; i++) {
+          const pg = await doc.getPage(i), lines = await pageLines(pg);
+          if (i <= 2 && S.autoDate && !S._dateSet) {
+            const r = findDates(lines.map(l => l.s).join(' ')) || (i === 2 ? findDates(f.name.replace(/[_-]/g, ' ').replace(/(\d{1,2}) (\d{1,2})/, '$1.$2')) : null);
+            if (r) { S.uDate = r[0]; S.uEnd = r[1]; S._dateSet = true; log('📅 Perioadă detectată: ' + fmtD(r[0]) + '–' + fmtD(r[1])); const a = $('#uDate'), b = $('#uEnd'); if (a) { a.value = r[0]; b.value = r[1]; } }
+          }
+          if (lines.reduce((s, l) => s + l.s.length, 0) >= 40) tps.push({ i, lines }); else imgs.push(i);
+        }
+        if (S.autoDate && !S._dateSet) log('📅 Data nu s-a găsit în catalog, folosesc ' + fmtD(S.uDate) + '–' + fmtD(S.uEnd));
+        const todo = tps.filter(p => !pageDone(fk, p.i)), todoImg = imgs.filter(i => !pageDone(fk, i));
+        const skipped = n - todo.length - todoImg.length;
+        log(`${tps.length} pagini cu text, ${imgs.length} doar imagine` + (skipped ? `, ${skipped} deja procesate` : ''));
+        for (let k = 0; k < todo.length; k += TBATCH) { const tp = todo.slice(k, k + TBATCH); tasks.push({ n: tp.length, run: () => processTextBatch(doc, fk, tp) }); }
+        for (let k = 0; k < todoImg.length; k += BATCH) {
+          const js = todoImg.slice(k, k + BATCH).map(i => ({ label: f.name + ' p.' + i, fk, idx: i, get: async () => renderBlob(await doc.getPage(i)) }));
+          tasks.push({ n: js.length, run: () => processBatch(js) });
+        }
+      } else { const fk = 'i' + norm(f.name) + f.size; if (!pageDone(fk, 1)) tasks.push({ n: 1, run: () => processBatch([{ label: f.name, fk, idx: 1, get: () => imgBlob(f) }]) }); else log(f.name + ': deja procesat'); }
     } catch (e) { log('✗ ' + f.name + ': ' + (e.message || e.code)); }
   }
-  S.prog.total = jobs.length; S.prog.start = Date.now(); showProg();
-  const batches = []; for (let i = 0; i < jobs.length; i += BATCH) batches.push(jobs.slice(i, i + BATCH));
+  S._dateSet = false;
+  S.prog.total = tasks.reduce((s, t) => s + t.n, 0); S.prog.start = Date.now(); showProg();
   let next = 0;
   const worker = async () => {
-    while (!S.stop && next < batches.length) {
-      const bt = batches[next++];
-      try { const n = await processBatch(bt); S.prog.found += n || 0; }
-      catch (e) { log('✗ ' + bt[0].label + ': ' + (e.message || e.code)); }
-      S.prog.done += bt.length; showProg();
+    while (!S.stop && next < tasks.length) {
+      const t = tasks[next++];
+      try { const n = await t.run(); S.prog.found += n || 0; } catch (e) { log('✗ ' + (e.message || e.code)); }
+      S.prog.done += t.n; showProg();
     }
   };
-  await Promise.all(Array.from({ length: Math.min(PAR, batches.length) }, worker));
-  log(S.stop ? 'Oprit.' : 'Gata.');
+  await Promise.all(Array.from({ length: Math.min(PAR, tasks.length) }, worker));
+  log(S.stop ? 'Oprit.' : 'Gata. ' + S.prog.found + ' produse.');
   S.busy = false; syncUploadBtn();
 }
 function syncUploadBtn() {
@@ -544,6 +622,7 @@ function syncBasketBtns(id) {
 }
 function viewUpload() {
   $('#main').innerHTML = `<div class="field"><label>Magazin</label><select id="uStore">${STORES.map(s => `<option ${s === S.uStore ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
+  <label class="muted"><input type="checkbox" id="uAuto" ${S.autoDate ? 'checked' : ''}> Ia data automat din catalog</label>
   <div class="row"><div class="field" style="flex:1"><label>Promoția începe</label><input type="date" id="uDate" value="${esc(S.uDate)}"></div>
   <div class="field" style="flex:1"><label>Promoția se termină</label><input type="date" id="uEnd" value="${esc(S.uEnd)}"></div></div>
   <div class="field"><label>Fișiere (PDF sau capturi de ecran / poze)</label><input type="file" id="uFiles" multiple accept="image/*,application/pdf"></div>
@@ -553,6 +632,7 @@ function viewUpload() {
   <div class="muted" id="ustats"></div>
   <div id="log">${esc(S.log.join('\n'))}</div>`;
   $('#uStore').onchange = e => S.uStore = e.target.value;
+  $('#uAuto').onchange = e => S.autoDate = e.target.checked;
   $('#uDate').onchange = e => { S.uDate = e.target.value || today(); S.uEnd = addDays(S.uDate, 6); $('#uEnd').value = S.uEnd; };
   $('#uEnd').onchange = e => S.uEnd = e.target.value || addDays(S.uDate, 6);
   $('#uFiles').onchange = e => { S.files = [...e.target.files]; $('#fileInfo').textContent = S.files.map(f => f.name).join(', '); syncUploadBtn(); };
