@@ -763,7 +763,7 @@ const SCOL = { Lidl: ['#1e3a8a', '#fde047'], Kaufland: ['#b91c1c', '#fff'], Carr
 const fr2 = v => f2(v).replace('.', ',');
 function pbox(p, disc) { const [i, d] = f2(p).split('.'); return `<span class="pbx${disc ? '' : ' n'}"><span>${i}<sup>${d}</sup></span></span>`; }
 const NONFOOD = new Set(['🧻', '🧴', '🧼', '🐾', '🌸', '🧸', '👕', '🍳', '🔌', '🛠️']);
-function isFood(x) { return catOf(x) === 'alimente' && !NONFOOD.has(genIcon(x)[0]); }
+function isFood(x) { return catOf(x) === 'alimente' && !(x.tags || []).includes('nealimentar') && !NONFOOD.has(genIcon(x)[0]) && !(x.kcal100 == null && x.protein100 == null); }
 function okRows() { return activeRows().filter(r => isFood(r.x) && dietOk(r.x) && exclOk(r.x) && r.c.dens != null && r.c.dens >= (profile.minDensity || 0)); }
 function viewOffers() {
   if (S.f.store) return viewStore();
@@ -865,7 +865,7 @@ function pageHtml(p, n, total) {
     items.filter(i => i.b).map(i => plusBtn(i.id, 'plus' + (i.id === S.hl ? ' hl' : ''), `style="${(i.b[3] - i.b[1]) < 0.04 ? `left:${Math.min(i.b[2] * 100 + 0.8, 93)}%;top:${(i.b[1] + i.b[3]) / 2 * 100}%;transform:translate(0,-50%)` : `left:${i.b[2] * 100}%;top:${i.b[1] * 100}%`}" title="${esc(products[i.id].name)}"`)).join('')}</div></div>` : '';
   const list = items.map(i => {
     const x = products[i.id], c = calc(x);
-    return `<div class="li"><div><div class="nm">${esc(x.name)}</div>${promoTag(x)}<div class="sub">${f2(c.cur.p)} lei${c.cur.o ? ' (era ' + f2(c.cur.o) + ')' : ''} · ${f1(c.dens)} g prot/100 kcal · ${f2(c.cost30)} lei/30 g prot</div></div>${plusBtn(i.id, 'plus2')}</div>`;
+    return `<div class="li"><div><div class="nm">${esc(x.name)}</div>${promoTag(x)}<div class="sub">${f2(c.cur.p)} lei${c.cur.o ? ' (era ' + f2(c.cur.o) + ')' : ''}${isFood(x) ? ` · ${f1(c.dens)} g prot/100 kcal · ${f2(c.cost30)} lei/30 g prot` : ''}</div></div>${plusBtn(i.id, 'plus2')}</div>`;
   }).join('');
   return `<div class="pg"><div class="muted">Pagina ${n}/${total}</div>${img}<details${p.asset ? '' : ' open'}><summary class="muted">Produse (${items.length})</summary>${list}</details></div>`;
 }
@@ -996,7 +996,7 @@ const GEN = [
   ['☕', '#2e241c', 'cafea|espresso|cappuccino|ness|ceai'], ['🍷', '#331a26', 'vin |vin$|sampanie|spumant|prosecco'], ['🍺', '#3a2f14', 'bere'],
   ['🥃', '#33261a', 'whisk|vodca|votca|rom |gin |lichior|tuica|palinca|coniac|brandy|tequila'], ['🥤', '#1c2e3a', 'suc|apa |apa$|cola|pepsi|limonada|energizant|nectar|bautur|minerala|fanta|sprite'],
   ['💪', '#1c3324', 'protein|whey|creatina|supliment|vitamin'],
-  ['🧻', '#262b36', 'hartie|servetel|prosop|batiste|scutec|absorbant'], ['🧴', '#1f2d3a', 'sampon|gel de dus|sapun|crema|deodorant|lotiune|balsam de par|pasta de dinti|cosmetic|parfum|lame|periuta'],
+  ['🧻', '#262b36', 'hartie|servetel|prosop|batiste|scutec|absorbant'], ['🧴', '#1f2d3a', 'sampon|gel de dus|gel de ras|spuma de ras|sapun|crema|deodorant|antiperspirant|lotiune|balsam de par|pasta de dinti|apa de gura|cosmetic|parfum|lame|aparat de ras|periuta|ingrijire|igiena|machiaj|ruj|rimel|fond de ten|demachiant|serum|masca|vopsea de par|fixativ|spray de par|gel de par|tampoane|bete|dischete|servetele umede|scutece|absorbante|lac de unghii|after shave|colonie|apa de toaleta|lotiune de corp|unt de corp|nivea|dove|rexona|gillette|colgate|elmex|garnier|loreal|head shoulders|palmolive|axe |old spice'],
   ['🧼', '#1c3036', 'detergent|balsam|dedurizant|inalbitor|vase|fairy|degresant|dezinfectant|curat|burete|lavete|saci|pastile|capsule de spalat|odorizant'],
   ['🐾', '#2e2a1f', 'caini|pisici|hrana pentru|animale|pet '], ['🌸', '#33202e', 'flori|planta|ghiveci|buchet|trandafir|orhidee|paulia|brad'], ['🧸', '#33271f', 'jucari|joc |lego|papus|copii'],
   ['👕', '#22283a', 'tricou|pantalon|sosete|pijama|geaca|pulover|incaltaminte|papuci|lenjerie|haine|bluza|ghete'], ['🍳', '#2a2d33', 'tigaie|oala|cratita|vesela|tacamuri|pahar|farfuri|cutit|bucatarie|ibric|cana|termos|tava|castron|bol |recipient|caserol|cuptor|toaster|fierbator|cafetier|espressor|friteuz|robot|storcator|cantar|set de'],
@@ -1103,7 +1103,7 @@ Oferte: ${JSON.stringify(cand)}`);
   viewBasket();
 }
 async function makeRecipes() {
-  const rows = basketRows().filter(r => catOf(r.x) === 'alimente');
+  const rows = basketRows().filter(r => isFood(r.x));
   if (!rows.length) { toast('Coșul e gol'); return; }
   const btn = $('#recBtn'); btn.disabled = true; btn.textContent = 'Se generează…';
   try {
