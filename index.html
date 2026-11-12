@@ -133,6 +133,7 @@ nav .midc svg{width:22px;height:22px}
 .lst .st{font-weight:700;font-size:20px;letter-spacing:-.2px}
 .lst .pd{display:flex;align-items:center;gap:8px;margin-top:4px;color:var(--mut);font-size:13px}
 .lst .tg{font-size:11px;font-weight:600;border-radius:99px;padding:2px 8px;background:#102418;color:var(--ac)}
+.lst .tg.f{background:#13233a;color:var(--bl)}
 .lst .tg.x{background:#2a1618;color:var(--rd)}
 .lst .tt{text-align:right}.lst .tt b{font-size:22px;font-weight:700;letter-spacing:-.3px}
 .lst .tt small{display:block;font-size:12px;color:var(--ac);margin-top:2px}
@@ -965,6 +966,7 @@ const bp = r => (bsnap[r.id] && bsnap[r.id].p != null) ? bsnap[r.id].p : r.c.cur
 function basketRows() {
   return basket.map(id => products[id] && products[id].history ? { id, x: products[id], c: calc(products[id]) } : null).filter(Boolean);
 }
+const DAYS = ['duminică', 'luni', 'marți', 'miercuri', 'joi', 'vineri', 'sâmbătă'];
 const MONTHS = ['ianuarie', 'februarie', 'martie', 'aprilie', 'mai', 'iunie', 'iulie', 'august', 'septembrie', 'octombrie', 'noiembrie', 'decembrie'];
 function rangeRo(d, e) {
   if (!d) return '';
@@ -986,7 +988,8 @@ function basketGroups() {
     const s = bsnap[id] || snapOf(id) || {}, gk = x.store + '|' + (s.d || '') + '|' + (s.e || '');
     (g[gk] = g[gk] || { gk, store: x.store, d: s.d, e: s.e, ids: [] }).ids.push(id);
   });
-  return Object.values(g).sort((a, b) => (b.d || '').localeCompare(a.d || ''));
+  const now = today(), rk = x => x.e && x.e < now ? 2 : (x.d > now ? 1 : 0);
+  return Object.values(g).sort((a, b) => rk(a) - rk(b) || (rk(a) === 2 ? (b.d || '').localeCompare(a.d || '') : (a.d || '').localeCompare(b.d || '')));
 }
 const SECS = [['alimente', '🥩 Alimente'], ['curatenie', '🧼 Curățenie'], ['altele', '📦 Altele']];
 function pageIndex() {
@@ -1055,7 +1058,7 @@ function viewBasket() {
     const pr = food.reduce((a, r) => a + (r.c.protPack || 0), 0), kc = food.reduce((a, r) => a + (r.c.kcalPack || 0), 0);
     const exp = g.e && g.e < now, done = g.ids.filter(id => bsnap[id] && bsnap[id].done).length, sav = rows.reduce((a, r) => { const s = sn(r.id); return a + (s.o && s.o > bp(r) ? s.o - bp(r) : 0); }, 0);
     const body = SECS.map(([k, t]) => { const rs = rows.filter(r => catOf(r.x) === k); return rs.length ? `<div class="sx">${t}<i>${rs.length} · ${f2(rs.reduce((a, r) => a + bp(r), 0))} lei</i></div><div class="g2">` + rs.map(r => itemHtml(r, pidx)).join('') + '</div>' : ''; }).join('');
-    return `<div class="lst"><div class="lh"><div><div class="st">${esc(g.store)}</div><div class="pd"><span>${esc(rangeRo(g.d, g.e))}</span><span class="tg ${exp ? 'x' : ''}">${exp ? 'expirată' : 'activă'}</span></div></div>
+    return `<div class="lst"><div class="lh"><div><div class="st">${esc(g.store)}</div><div class="pd"><span>${esc(rangeRo(g.d, g.e))}</span><span class="tg ${exp ? 'x' : g.d > now ? 'f' : ''}">${exp ? 'expirată' : g.d > now ? 'de ' + DAYS[new Date(g.d + 'T12:00:00').getDay()] + ', ' + +g.d.slice(8) + ' ' + MONTHS[+g.d.slice(5, 7) - 1].slice(0, 3) : 'activă acum'}</span></div></div>
       <div class="tt"><b>${f2(tp)} lei</b>${sav > 0 ? `<small>economisești ${f2(sav)} lei</small>` : ''}</div></div>
       <div class="pgb"><div style="width:${rows.length ? Math.round(done / rows.length * 100) : 0}%"></div></div>
       <div class="chips"><span>${done}/${rows.length} luate</span>${food.length ? `<span>${Math.round(pr)} g proteină</span><span>${Math.round(kc)} kcal</span>` : ''}</div>${body}
@@ -1162,7 +1165,8 @@ document.addEventListener('click', async e => {
   if (act === 'basket') {
     const adding = !basket.includes(id);
     basket = adding ? [...basket, id] : basket.filter(i => i !== id);
-    if (adding) bsnap[id] = snapOf(id); else delete bsnap[id];
+    if (adding) { const cd = S.tab === 'catalog' && S.catOpen && S.cat ? S.cat.split('|')[1] : null, x = products[id], hh = cd && x && x.history.find(q => q.d === cd);
+      bsnap[id] = hh ? { p: hh.p, o: hh.o || null, d: hh.d, e: hh.e || null } : snapOf(id); } else delete bsnap[id];
     write(() => col.doc('basket').set({ items: basket, snap: bsnap }));
     if (adding && !favs.includes(id)) { favs = [...favs, id]; write(() => col.doc('favs').set({ ids: favs })); }
     if (S.tab === 'basket') viewBasket();
