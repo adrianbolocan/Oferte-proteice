@@ -105,6 +105,11 @@ nav .midc svg{width:22px;height:22px}
 .pgimg img{display:block;width:100%;height:auto}
 .plus,.plus2{width:34px;height:34px;border-radius:50%;border:2px solid #fff;background:rgba(15,17,21,.88);color:#fff;font-size:20px;line-height:1;padding:0;flex:none}
 .plus{position:absolute;transform:translate(-100%,0)}
+.plus.hl{animation:hlp 1s ease-in-out 5;z-index:3}
+@keyframes hlp{0%,100%{box-shadow:0 0 0 0 rgba(74,222,128,.9)}50%{box-shadow:0 0 0 14px rgba(74,222,128,0)}}
+.tl .fa{display:flex;align-items:center;gap:2px}
+.tl .cb{background:none;border:0;color:var(--mut);padding:2px 4px;display:flex}
+.tl .cb svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .plus.on,.plus2.on{background:var(--ac);color:#06220f;border-color:var(--ac)}
 .li{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
 .bar{height:10px;background:var(--line);border-radius:99px;overflow:hidden;margin:10px 0 4px}
@@ -834,7 +839,7 @@ function plusBtn(id, cls, extra) {
 function pageHtml(p, n, total) {
   const items = (p.items || []).filter(i => products[i.id]);
   const img = p.asset ? `<div class="pgscroll"><div class="pgimg${S.zoom ? ' z' : ''}"><img data-asset="${esc(p.asset)}" alt="" style="min-height:300px;background:#181b22">${
-    items.filter(i => i.b).map(i => plusBtn(i.id, 'plus', `style="${(i.b[3] - i.b[1]) < 0.04 ? `left:${Math.min(i.b[2] * 100 + 0.8, 93)}%;top:${(i.b[1] + i.b[3]) / 2 * 100}%;transform:translate(0,-50%)` : `left:${i.b[2] * 100}%;top:${i.b[1] * 100}%`}" title="${esc(products[i.id].name)}"`)).join('')}</div></div>` : '';
+    items.filter(i => i.b).map(i => plusBtn(i.id, 'plus' + (i.id === S.hl ? ' hl' : ''), `style="${(i.b[3] - i.b[1]) < 0.04 ? `left:${Math.min(i.b[2] * 100 + 0.8, 93)}%;top:${(i.b[1] + i.b[3]) / 2 * 100}%;transform:translate(0,-50%)` : `left:${i.b[2] * 100}%;top:${i.b[1] * 100}%`}" title="${esc(products[i.id].name)}"`)).join('')}</div></div>` : '';
   const list = items.map(i => {
     const x = products[i.id], c = calc(x);
     return `<div class="li"><div><div class="nm">${esc(x.name)}</div>${promoTag(x)}<div class="sub">${f2(c.cur.p)} lei${c.cur.o ? ' (era ' + f2(c.cur.o) + ')' : ''} · ${f1(c.dens)} g prot/100 kcal · ${f2(c.cost30)} lei/30 g prot</div></div>${plusBtn(i.id, 'plus2')}</div>`;
@@ -989,7 +994,7 @@ function itemHtml(r, pidx) {
   return `<div class="tl ${dn ? 'dn' : ''}" data-id="${esc(r.id)}">${pct ? `<span class="rb">−${pct}%</span>` : ''}<div class="hd"><button class="ck" data-act="done" aria-label="Bifează">${dn ? '✓' : ''}</button><span class="em">${genIcon(r.x)[0]}</span></div>
     <div class="nm"${pct ? ' style="padding-right:14px"' : ''}>${esc(r.x.name)}</div>
     <div class="pz"><span class="bx${o ? '' : ' n'}"><span>${pi}<sup>${pd}</sup></span></span>${o ? `<s>${fr(o)}</s>` : ''}</div>
-    <div class="ft"><span>${sub}</span><button class="xb" data-act="basket" aria-label="Scoate din listă">✕</button></div></div>`;
+    <div class="ft"><span>${sub}</span><span class="fa">${pidx[r.id] ? `<button class="cb" data-act="cat" aria-label="Vezi în catalog"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5.5A1.5 1.5 0 0 1 4.5 4H11v15H4.5A1.5 1.5 0 0 0 3 20.5z"/><path d="M21 5.5A1.5 1.5 0 0 0 19.5 4H13v15h6.5a1.5 1.5 0 0 1 1.5 1.5z"/></svg></button>` : ''}<button class="xb" data-act="basket" aria-label="Scoate din listă">✕</button></span></div></div>`;
 }
 function listText(g) {
   const rows = g.ids.map(id => ({ id, x: products[id], c: calc(products[id]) }));
@@ -1119,6 +1124,13 @@ document.addEventListener('click', async e => {
     if (S.tab === 'basket') viewBasket();
     else if (S.tab === 'catalog') { syncBasketBtns(id); const x = products[id]; if (x) toast((basket.includes(id) ? 'Adăugat: ' : 'Scos: ') + x.name); }
     else renderList();
+  } else if (act === 'cat') {
+    const g = catGroups(); let best = null;
+    for (const k in g) { const pos = g[k].findIndex(pg => (pg.items || []).some(i => i.id === id)); if (pos >= 0 && (!best || g[k][0].date > best.d)) best = { k, pos, d: g[k][0].date }; }
+    if (!best) { toast('Produsul nu e în niciun catalog salvat'); return; }
+    S.cat = best.k; S.catPg = best.pos; S.catOpen = true; S.hl = id; S.tab = 'catalog'; render(); window.scrollTo(0, 0);
+    setTimeout(() => { const b = document.querySelector('.plus.hl'); if (b) b.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'smooth' }); }, 700);
+    setTimeout(() => { S.hl = null; document.querySelectorAll('.hl').forEach(b => b.classList.remove('hl')); }, 6000);
   } else if (act === 'open') { S.det[id] = !S.det[id]; renderList();
   } else if (act === 'done') {
     { const cur = bsnap[id] || snapOf(id); if (cur) { bsnap[id] = { ...cur, done: !cur.done }; write(() => col.doc('basket').set({ items: basket, snap: bsnap })); viewBasket(); } }
