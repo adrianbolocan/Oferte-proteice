@@ -64,7 +64,21 @@ nav .midc svg{width:22px;height:22px}
 .bdg{position:absolute;top:-2px;left:calc(50% + 6px);min-width:16px;height:16px;border-radius:8px;background:var(--ac);color:#06220f;font-size:11px;line-height:16px;text-align:center;font-style:normal;padding:0 4px}
 .brand{display:flex;align-items:center;gap:8px;margin:4px 0 6px;font-size:24px;letter-spacing:-.02em}
 .brand b{color:var(--ac);font-weight:600}
-.pg{margin:16px 0}
+.pg{margin:8px 0}
+.shs{font-size:17px;font-weight:600;margin:14px 0 8px}
+.shelf{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.ct{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:8px 8px 10px;color:var(--tx);text-align:left}
+.ct .cv{aspect-ratio:3/4;border-radius:9px;overflow:hidden;background:#1c2330;display:flex;align-items:center;justify-content:center;font-size:40px;margin-bottom:8px}
+.ct .cv img{width:100%;height:100%;object-fit:cover;object-position:top}
+.ct .cn{font-weight:600;font-size:14px}
+.ct.x .cv{opacity:.5}
+.rdh{display:flex;align-items:center;gap:10px;margin:10px 0}
+.rd{display:flex;align-items:flex-start;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 -12px;scrollbar-width:none}
+.rd::-webkit-scrollbar{display:none}
+.sl{flex:0 0 100%;min-width:0;scroll-snap-align:start;padding:0 12px}
+.rnav{position:sticky;bottom:84px;display:flex;justify-content:center;align-items:center;gap:14px;z-index:4;pointer-events:none}
+.rnav>*{pointer-events:auto}
+.rnav span{background:#222833;border:1px solid var(--line);border-radius:99px;padding:6px 12px;font-size:13px}
 .pgscroll{overflow-x:auto;border:1px solid var(--line);border-radius:10px;margin:6px 0}
 .pgimg{position:relative;width:100%}
 .pgimg.z{width:220%}
@@ -129,7 +143,10 @@ nav .midc{width:auto;height:auto;margin:0;border:0;background:none}
 .bdg{position:static;margin-left:auto}
 #list{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px;align-items:start}
 #list .card{margin:0}
-.pg{display:inline-block;vertical-align:top;width:calc(50% - 12px);margin:12px 8px 12px 0}
+.sl{flex-basis:50%}
+.rd{margin:0 -8px}
+.shelf{grid-template-columns:repeat(auto-fill,minmax(170px,1fr))}
+.rnav{position:static;margin-top:8px}
 .g2{grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px}
 .lst{padding:22px 24px 20px}
 .field,.filters{max-width:720px}
@@ -773,24 +790,43 @@ function pageHtml(p, n, total) {
   }).join('');
   return `<div class="pg"><div class="muted">Pagina ${n}/${total}</div>${img}<details${p.asset ? '' : ' open'}><summary class="muted">Produse (${items.length})</summary>${list}</details></div>`;
 }
+function catEnd(a) {
+  const d = a[0].date;
+  for (const p of a) for (const it of (p.items || [])) { const x = products[it.id], q = x && x.history && x.history.find(q => q.d === d && q.e); if (q) return q.e; }
+  return addDays(d, 6);
+}
 function viewCatalog() {
-  const g = catGroups(), keys = Object.keys(g).sort().reverse();
+  const g = catGroups(), keys = Object.keys(g);
   if (!keys.length) { $('#main').innerHTML = '<div class="card muted">Niciun catalog salvat încă. Încarcă unul din „Încarcă”.</div>'; return; }
-  if (!g[S.cat]) S.cat = keys[0];
-  $('#main').innerHTML = `<div class="row"><select id="cSel">${keys.map(k => `<option value="${esc(k)}">${esc(k.replace('|', ' · '))} (${g[k].length} pag.)</option>`).join('')}</select>
-    <label class="muted"><input type="checkbox" id="cZoom"> Zoom ×2</label></div><div id="pagesBox"></div><div id="sent" style="height:1px"></div>`;
-  $('#cSel').value = S.cat; $('#cZoom').checked = S.zoom;
-  let shown = 0;
-  const more = () => { const a = g[S.cat]; if (shown >= a.length) return; const end = Math.min(a.length, shown + 6);
-    $('#pagesBox').insertAdjacentHTML('beforeend', a.slice(shown, end).map((p, i) => pageHtml(p, shown + i + 1, a.length)).join(''));
-    shown = end; fillImgs().catch(e => toast('Imagini: ' + e.message)); };
-  const draw = () => { shown = 0; $('#pagesBox').innerHTML = ''; more(); };
-  if (window.moreObs) window.moreObs.disconnect();
-  window.moreObs = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) more(); }, { rootMargin: '1500px 0px' });
-  window.moreObs.observe($('#sent'));
-  $('#cSel').onchange = e => { S.cat = e.target.value; draw(); window.scrollTo(0, 0); };
+  if (S.catOpen && g[S.cat]) return viewReader(g[S.cat]);
+  const now = today();
+  const cats = keys.map(k => { const a = g[k], e = catEnd(a); return { k, a, e, store: a[0].store, d: a[0].date, exp: e < now, n: new Set(a.flatMap(p => (p.items || []).filter(i => products[i.id]).map(i => i.id))).size }; }).sort((x, y) => y.d.localeCompare(x.d));
+  const tile = c => { const cv = c.a.find(p => p.asset);
+    return `<button class="ct${c.exp ? ' x' : ''}" data-cat="${esc(c.k)}"><div class="cv">${cv ? `<img data-asset="${esc(cv.asset)}" alt="">` : '📖'}</div>
+      <div class="cn">${esc(rangeRo(c.d, c.e))}</div><div class="sub">${c.a.length} pagini · ${c.n} produse</div></button>`; };
+  const sect = (t, l) => { if (!l.length) return ''; const st = [...new Set(l.map(c => c.store))].sort();
+    return `<div class="sec">${t}<i>${l.length}</i></div>` + st.map(s => `<div class="shs">${esc(s)}</div><div class="shelf">${l.filter(c => c.store === s).map(tile).join('')}</div>`).join(''); };
+  $('#main').innerHTML = sect('Active', cats.filter(c => !c.exp)) + sect('Expirate', cats.filter(c => c.exp));
+  document.querySelectorAll('.ct').forEach(b => b.onclick = () => { if (S.cat !== b.dataset.cat) S.catPg = 0; S.cat = b.dataset.cat; S.catOpen = true; viewCatalog(); window.scrollTo(0, 0); });
+  fillImgs().catch(() => {});
+}
+function viewReader(a) {
+  const n = a.length; let cur = Math.min(S.catPg || 0, n - 1);
+  $('#main').innerHTML = `<div class="rdh"><button class="btn sm sec" id="rBack">‹ Cataloage</button><div style="flex:1;min-width:0"><div class="nm">${esc(a[0].store)}</div><div class="sub">${esc(rangeRo(a[0].date, catEnd(a)))}</div></div>
+    <label class="muted"><input type="checkbox" id="cZoom"> Zoom</label></div>
+    <div class="rd" id="rd">${a.map((p, i) => `<div class="sl">${pageHtml(p, i + 1, n)}</div>`).join('')}</div>
+    <div class="rnav"><button class="btn sec" id="rPrev" aria-label="Pagina anterioară">‹</button><span id="rPos"></span><button class="btn sec" id="rNext" aria-label="Pagina următoare">›</button></div>`;
+  const rd = $('#rd'), sl = [...rd.children], w = () => sl[0].offsetWidth || 1;
+  const load = () => { for (let j = Math.max(0, cur - 1); j < Math.min(n, cur + 4); j++) { const im = sl[j].querySelector('img[data-asset]'); if (im && !im.getAttribute('src') && urlCache[im.dataset.asset]) im.src = urlCache[im.dataset.asset]; } };
+  const pos = () => { $('#rPos').textContent = (cur + 1) + ' / ' + n; S.catPg = cur; load(); };
+  $('#cZoom').checked = S.zoom;
   $('#cZoom').onchange = e => { S.zoom = e.target.checked; document.querySelectorAll('.pgimg').forEach(el => el.classList.toggle('z', S.zoom)); };
-  draw();
+  $('#rBack').onclick = () => { S.catOpen = false; viewCatalog(); window.scrollTo(0, 0); };
+  $('#rPrev').onclick = () => rd.scrollBy({ left: -w(), behavior: 'smooth' });
+  $('#rNext').onclick = () => rd.scrollBy({ left: w(), behavior: 'smooth' });
+  let t = 0; rd.onscroll = () => { clearTimeout(t); t = setTimeout(() => { const c = Math.round(rd.scrollLeft / w()); if (c !== cur) { cur = Math.max(0, Math.min(n - 1, c)); pos(); } }, 60); };
+  rd.scrollLeft = cur * w(); pos();
+  fillImgs().then(load).catch(e => toast('Imagini: ' + e.message));
 }
 function syncBasketBtns(id) {
   const on = basket.includes(id);
