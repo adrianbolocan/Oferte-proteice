@@ -232,7 +232,9 @@ function activeRows() {
     .filter(([, x]) => x.history && x.history.length && x.last === latest[x.store])
     .map(([id, x]) => ({ id, x, c: calc(x) }));
 }
+const PET = /(^|-)(caini|catei|pisici|pisoi|animale|animalute|pet|whiskas|pedigree|felix|friskies|purina|kitekat|chappi|gourmet|sheba|perfect-fit|dog|cat|catfood|dogfood|asternut|litiera)(-|$)|hrana-(umeda|uscata)/;
 function dietOk(x) {
+  if (PET.test(norm((x.name || '') + ' ' + (x.canonical || '') + ' ' + (x.tags || []).join(' ')))) return false;
   const t = x.tags || [];
   if (profile.diet === 'vegetarian') return !t.includes('carne') && !t.includes('pește');
   if (profile.diet === 'pescetarian') return !t.includes('carne');
