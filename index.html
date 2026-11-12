@@ -123,9 +123,9 @@ nav .midc svg{width:22px;height:22px}
 .pgb div{height:100%;background:var(--ac);border-radius:99px;transition:width .3s}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .chips span{font-size:12px;color:var(--mut);background:var(--bg);border:1px solid var(--line);border-radius:99px;padding:3px 10px}
-.sec{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--mut);margin:20px 0 2px}
-.sec::after{content:"";flex:1;height:1px;background:var(--line)}
-.sec i{font-style:normal;font-weight:500;letter-spacing:0;text-transform:none;color:#7c8494}
+.sx{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--mut);margin:20px 0 2px}
+.sx::after{content:"";flex:1;height:1px;background:var(--line)}
+.sx i{font-style:normal;font-weight:500;letter-spacing:0;text-transform:none;color:#7c8494}
 .g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}
 .tl{background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:10px 10px 8px;display:flex;flex-direction:column;position:relative;overflow:hidden}
 .tl .hd{display:flex;align-items:center;gap:8px}
@@ -374,8 +374,16 @@ function fuzzyId(store, canonical, brand) {
 }
 async function upsertItem(it, store, date) {
   const name = String(it.name || it.canonical || '').trim();
-  const p = num(it.price);
+  let p = num(it.price);
   if (!name || !p || p <= 0 || p > 2000) return null;
+  { const w0 = num(it.weight_g), o0 = num(it.old_price), cn = norm(it.canonical || name);
+    const peers = Object.values(products).map(x => { const l = x.history && x.history[x.history.length - 1]; return norm(x.canonical || x.name) === cn && l && l.ppk ? l.ppk : null; }).filter(Boolean).sort((a, b) => a - b);
+    const med = peers.length ? peers[peers.length >> 1] : null, ppk0 = w0 > 0 ? p / w0 * 1000 : null;
+    for (const k of [10, 100]) {
+      if (o0 && o0 > p / k && o0 < p / k * 3) { p = Math.round(p / k * 100) / 100; break; }
+      if (med && ppk0 && ppk0 / med > k * 0.5 && ppk0 / med < k * 2 && (it.cat === 'alimente' || !it.cat)) { p = Math.round(p / k * 100) / 100; break; }
+    }
+  }
   const canonical = String(it.canonical || name).trim();
   const key = norm(store) + '|' + norm(canonical) + '|' + norm(it.brand);
   let id = 'p_' + norm(key).slice(0, 150);
@@ -789,6 +797,8 @@ function cardHtml(r) {
     <div><label>kcal / 100 g</label><input data-f="kcal100" value="${esc(x.kcal100 == null ? '' : x.kcal100)}" inputmode="decimal"></div>
     <div><label>proteină g / 100 g</label><input data-f="protein100" value="${esc(x.protein100 == null ? '' : x.protein100)}" inputmode="decimal"></div>
     <div><label>grăsime g / 100 g</label><input data-f="fat100" value="${esc(x.fat100 == null ? '' : x.fat100)}" inputmode="decimal"></div>
+    <div><label>preț actual (lei)</label><input data-f="price" value="${esc(c.cur.p)}" inputmode="decimal"></div>
+    <div><label>preț vechi (lei)</label><input data-f="old" value="${esc(c.cur.o == null ? '' : c.cur.o)}" inputmode="decimal"></div>
     <div><label>greutate (g)</label><input data-f="weight_g" value="${esc(x.weight_g == null ? '' : x.weight_g)}" inputmode="decimal"></div>
     <div style="grid-column:1/3;display:flex;gap:8px"><button class="btn sm" data-act="save">Salvează</button>
     <button class="btn sm rd" data-act="del">${S.del[id] ? 'Sigur? Apasă din nou' : 'Șterge produsul'}</button></div></div>` : '';
@@ -846,7 +856,7 @@ function viewCatalog() {
     return `<button class="ct${c.exp ? ' x' : ''}" data-cat="${esc(c.k)}"><div class="cv">${cv ? `<img data-asset="${esc(cv.asset)}" alt="">` : '📖'}</div>
       <div class="cn">${esc(rangeRo(c.d, c.e))}</div><div class="sub">${c.a.length} pagini · ${c.n} produse</div></button>`; };
   const sect = (t, l) => { if (!l.length) return ''; const st = [...new Set(l.map(c => c.store))].sort();
-    return `<div class="sec">${t}<i>${l.length}</i></div>` + st.map(s => `<div class="shs">${esc(s)}</div><div class="shelf">${l.filter(c => c.store === s).map(tile).join('')}</div>`).join(''); };
+    return `<div class="sx">${t}<i>${l.length}</i></div>` + st.map(s => `<div class="shs">${esc(s)}</div><div class="shelf">${l.filter(c => c.store === s).map(tile).join('')}</div>`).join(''); };
   $('#main').innerHTML = sect('Active', cats.filter(c => !c.exp)) + sect('Expirate', cats.filter(c => c.exp));
   document.querySelectorAll('.ct').forEach(b => b.onclick = () => { if (S.cat !== b.dataset.cat) S.catPg = 0; S.cat = b.dataset.cat; S.catOpen = true; viewCatalog(); window.scrollTo(0, 0); });
   fillImgs().catch(() => {});
@@ -944,7 +954,7 @@ function thumbHtml(e) {
 }
 const GEN = [
   ['🍗', '#3a2a1a', 'pui|curcan|pasare|pulpe|aripi|piept'], ['🥩', '#3a1d1d', 'porc|vita|cotlet|ceafa|muschi|antricot|carne|miel|tocat|mici|friptura|coaste'],
-  ['🥓', '#3a2222', 'bacon|sunca|salam|carnat|crenvur|parizer|kaiser|jambon|prosciutto|mezel|pastrama|slanin'], ['🐟', '#16303a', 'peste|somon|ton |macrou|hering|pastrav|cod |sardin|creveti|fructe de mare|icre|surimi'],
+  ['🥓', '#3a2222', 'bacon|sunca|salam|carnat|crenvur|parizer|kaiser|jambon|prosciutto|mezel|pastrama|slanin'], ['🐟', '#16303a', 'peste|somon|ton |macrou|hering|pastrav|cod |hamsi|stavrid|merluciu|crap|calcan|biban|dorada|lup de mare|caracatit|calamar|midii|sardin|creveti|fructe de mare|icre|surimi'],
   ['🥚', '#3a331a', 'oua|ou '], ['🧀', '#3a321a', 'branza|cascaval|telemea|mozzarella|parmezan|cheddar|gouda|feta|ricotta|urda|cas '],
   ['🥛', '#1f2b3a', 'lapte|iaurt|kefir|sana|smantana|skyr|frisca|chefir|lactate'], ['🧈', '#3a341c', 'unt|margarina'],
   ['🍞', '#3a2c1a', 'paine|bagheta|chifl|covrig|lipie|toast|franzela|croissant|cozonac|corn '], ['🍝', '#3a2f1a', 'paste|spaghet|penne|fusilli|macaroane|taitei|lasagna|noodles'],
@@ -995,7 +1005,7 @@ function viewBasket() {
     const tp = rows.reduce((a, r) => a + bp(r), 0), food = rows.filter(r => isFood(r.x));
     const pr = food.reduce((a, r) => a + (r.c.protPack || 0), 0), kc = food.reduce((a, r) => a + (r.c.kcalPack || 0), 0);
     const exp = g.e && g.e < now, done = g.ids.filter(id => bsnap[id] && bsnap[id].done).length, sav = rows.reduce((a, r) => { const s = sn(r.id); return a + (s.o && s.o > bp(r) ? s.o - bp(r) : 0); }, 0);
-    const body = SECS.map(([k, t]) => { const rs = rows.filter(r => catOf(r.x) === k); return rs.length ? `<div class="sec">${t}<i>${rs.length} · ${f2(rs.reduce((a, r) => a + bp(r), 0))} lei</i></div><div class="g2">` + rs.map(r => itemHtml(r, pidx)).join('') + '</div>' : ''; }).join('');
+    const body = SECS.map(([k, t]) => { const rs = rows.filter(r => catOf(r.x) === k); return rs.length ? `<div class="sx">${t}<i>${rs.length} · ${f2(rs.reduce((a, r) => a + bp(r), 0))} lei</i></div><div class="g2">` + rs.map(r => itemHtml(r, pidx)).join('') + '</div>' : ''; }).join('');
     return `<div class="lst"><div class="lh"><div><div class="st">${esc(g.store)}</div><div class="pd"><span>${esc(rangeRo(g.d, g.e))}</span><span class="tg ${exp ? 'x' : ''}">${exp ? 'expirată' : 'activă'}</span></div></div>
       <div class="tt"><b>${f2(tp)} lei</b>${sav > 0 ? `<small>economisești ${f2(sav)} lei</small>` : ''}</div></div>
       <div class="pgb"><div style="width:${rows.length ? Math.round(done / rows.length * 100) : 0}%"></div></div>
@@ -1118,6 +1128,9 @@ document.addEventListener('click', async e => {
   } else if (act === 'edit') { S.open[id] = !S.open[id]; renderList(); }
   else if (act === 'save') {
     const x = { ...products[id] }; card.querySelectorAll('[data-f]').forEach(i => { x[i.dataset.f] = num(i.value); });
+    { const np = x.price, no = x.old; delete x.price; delete x.old;
+      if (np > 0) { const hs = x.history.slice(), l = { ...hs[hs.length - 1], p: np, o: no && no > np ? no : null }; l.ppk = x.weight_g > 0 ? Math.round(np / x.weight_g * 100000) / 100 : null; hs[hs.length - 1] = l; x.history = hs;
+        if (bsnap[id]) { bsnap[id] = { ...bsnap[id], p: np, o: l.o }; write(() => col.doc('basket').set({ items: basket, snap: bsnap })); } } }
     x.edited = true; x.est = false; products[id] = x; S.open[id] = false;
     await write(() => col.doc(id).set(x)); renderList(); toast('Salvat');
   } else if (act === 'del') {
