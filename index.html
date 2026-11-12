@@ -65,6 +65,26 @@ nav .midc svg{width:22px;height:22px}
 .brand{display:flex;align-items:center;gap:8px;margin:4px 0 6px;font-size:24px;letter-spacing:-.02em}
 .brand b{color:var(--ac);font-weight:600}
 .pg{margin:8px 0}
+.fvb{width:100%;display:flex;align-items:center;gap:12px;background:#102418;border:1px solid #1f5a35;border-radius:14px;padding:12px 14px;color:var(--tx);margin:8px 0 12px}
+.stc{width:100%;display:block;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;color:var(--tx);margin-bottom:10px}
+.sth{display:flex;align-items:center;gap:12px}
+.sth b{font-size:16px}
+.slg{width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:17px;flex:none}
+.stp{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.stp span{background:var(--bg);border-radius:8px;padding:5px 9px;font-size:12px;color:var(--tx)}
+.chp{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
+.chp button{flex:none;background:none;border:1px solid var(--line);color:var(--mut);border-radius:99px;padding:5px 12px;font-size:13px}
+.chp button.on{border-color:var(--ac);color:var(--ac)}
+.orw{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid #20242c}
+.oem{font-size:24px;width:30px;text-align:center;flex:none;cursor:pointer}
+.oin{flex:1;min-width:0;cursor:pointer}
+.onm{font-size:14px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.pbx{background:var(--ac);color:#06220f;padding:3px 8px 2px;transform:skewX(-10deg);line-height:1;display:inline-block;flex:none}
+.pbx.n{background:#e8eaee}
+.pbx span{display:inline-block;transform:skewX(10deg);font-size:18px;font-weight:700;letter-spacing:-.4px;font-variant-numeric:tabular-nums}
+.pbx sup{font-size:10px;margin-left:1px}
+.opl{width:30px;height:30px;border-radius:50%;border:0;background:var(--ac);color:#06220f;font-size:19px;font-weight:700;padding:0;flex:none;line-height:1}
+.opl.on{background:var(--card);border:1.5px solid var(--ac);color:var(--ac);font-size:15px}
 .shs{font-size:17px;font-weight:600;margin:14px 0 8px}
 .shelf{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .ct{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:8px 8px 10px;color:var(--tx);text-align:left}
@@ -146,8 +166,8 @@ nav button[data-tab=upload]{order:9;margin-top:14px;background:var(--ac);color:#
 nav button[data-tab=upload]:hover{background:#6ee79a;color:#06220f}
 nav .midc{width:auto;height:auto;margin:0;border:0;background:none}
 .bdg{position:static;margin-left:auto}
-#list{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px;align-items:start}
-#list .card{margin:0}
+.stc{display:inline-block;width:calc(50% - 6px);vertical-align:top;margin:0 8px 12px 0}
+.stc:nth-of-type(2n){margin-right:0}
 .sl{flex-basis:50%}
 .rd{margin:0 -8px}
 .shelf{grid-template-columns:repeat(auto-fill,minmax(170px,1fr))}
@@ -194,7 +214,7 @@ const DEF_PROFILE = { kcal: 2200, protein: 150, diet: 'omnivor', exclude: '', mi
 const SB_URL = 'https://senwituyejxxkkxukggn.supabase.co', SB_KEY = 'sb_publishable_1-IHJpTJGxPaSDcWg3x_Xg_mvDXeEMZ';
 let sb = null, col = null, uid = null, loaded = false, assets = null, cfg = { gkey: '', model: '' }, urlCache = {};
 let bsnap = {}, favs = [], products = {}, pages = {}, profile = { ...DEF_PROFILE }, basket = [];
-let S = { cat: '', zoom: false, tab: 'offers', f: { sort: 'scor', store: '', q: '', promo: false, fav: false }, runIds: new Set(), open: {}, del: {}, log: [], recipes: '', suggest: '', busy: false, stop: false, files: [], uStore: 'Lidl', uDate: today(), uEnd: addDays(today(), 6), autoDate: true };
+let S = { det: {}, cat: '', zoom: false, tab: 'offers', f: { sort: 'scor', store: '', q: '', promo: false, fav: false }, runIds: new Set(), open: {}, del: {}, log: [], recipes: '', suggest: '', busy: false, stop: false, files: [], uStore: 'Lidl', uDate: today(), uEnd: addDays(today(), 6), autoDate: true };
 
 let wq = Promise.resolve();
 function updBadge() { const b = $('#bdg'); if (b) { b.textContent = basket.length; b.style.display = basket.length ? '' : 'none'; } }
@@ -703,23 +723,42 @@ function render() {
   document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('on', b.dataset.tab === S.tab));
   ({ offers: viewOffers, catalog: viewCatalog, upload: viewUpload, basket: viewBasket, profile: viewProfile })[S.tab]();
 }
+const SCOL = { Lidl: ['#1e3a8a', '#fde047'], Kaufland: ['#b91c1c', '#fff'], Carrefour: ['#1d4ed8', '#fff'], Penny: ['#cd1719', '#fff'], Mega: ['#e11d48', '#fff'], Profi: ['#ea580c', '#fff'], Auchan: ['#dc2626', '#fff'] };
+const fr2 = v => f2(v).replace('.', ',');
+function pbox(p, disc) { const [i, d] = f2(p).split('.'); return `<span class="pbx${disc ? '' : ' n'}"><span>${i}<sup>${d}</sup></span></span>`; }
+function okRows() { return activeRows().filter(r => dietOk(r.x) && exclOk(r.x) && r.c.dens != null && r.c.dens >= (profile.minDensity || 0)); }
 function viewOffers() {
-  const stores = [...new Set(Object.values(products).map(p => p.store))];
-  $('#main').innerHTML = `<div class="filters">
-    <select id="fSort"><option value="scor">Echilibrat (proteină/kcal ÷ cost)</option><option value="dens">Cel mai bun raport proteină/kcal</option><option value="cost">Cel mai ieftin / 30 g proteină</option><option value="real">Cea mai mare reducere reală</option></select>
-    <select id="fStore"><option value="">Toate magazinele</option>${stores.map(s => `<option>${esc(s)}</option>`).join('')}</select>
-    <input id="fQ" type="text" placeholder="Caută…">
-  </div>
-  <label class="muted"><input type="checkbox" id="fPromo"> doar cu reducere în catalog</label> &nbsp; <label class="muted"><input type="checkbox" id="fFav"> ★ doar favorite</label>
-  <div id="favBox"></div>
-  <div id="stat" class="muted" style="margin:8px 0"></div><div id="list"></div>`;
-  $('#fSort').value = S.f.sort; $('#fStore').value = S.f.store; $('#fQ').value = S.f.q; $('#fPromo').checked = S.f.promo; $('#fFav').checked = S.f.fav;
-  $('#fFav').onchange = e => { S.f.fav = e.target.checked; renderList(); };
-  $('#fSort').onchange = e => { S.f.sort = e.target.value; renderList(); };
-  $('#fStore').onchange = e => { S.f.store = e.target.value; renderList(); };
+  if (S.f.store) return viewStore();
+  const rows = okRows(), now = today(), by = {};
+  rows.forEach(r => (by[r.x.store] = by[r.x.store] || []).push(r));
+  const fr = activeRows().filter(r => favs.includes(r.id) && dietOk(r.x));
+  const fav = fr.length ? `<button class="fvb" data-fav="1"><span style="font-size:22px">⭐</span><span style="flex:1;text-align:left"><b>${fr.length === 1 ? '1 favorit e' : fr.length + ' favorite sunt'} la reducere</b><span class="sub" style="display:block">${esc(fr.slice(0, 3).map(r => r.x.canonical || r.x.name).join(', '))}</span></span><span class="sub">›</span></button>` : '';
+  const cards = Object.keys(by).sort((a, b) => by[b].length - by[a].length).map(s => {
+    const rs = by[s], d = rs.map(r => r.c.cur.d).sort()[0], e = rs.map(r => r.c.cur.e).filter(Boolean).sort().pop(), exp = e && e < now, col = SCOL[s] || ['#374151', '#fff'];
+    const top = [...rs].sort((a, b) => score(b) - score(a)).slice(0, 2);
+    return `<button class="stc" data-store="${esc(s)}"><div class="sth"><span class="slg" style="background:${col[0]};color:${col[1]}">${esc(s[0])}</span><span style="flex:1;text-align:left"><b>${esc(s)}</b><span class="sub" style="display:block">${esc(rangeRo(d, e))} · ${exp ? 'expirat' : 'activ'} · ${rs.length} oferte</span></span><span class="sub" style="font-size:18px">›</span></div>
+      <div class="stp">${top.map(r => `<span>${genIcon(r.x)[0]} ${esc((r.x.canonical || r.x.name).split(' ').slice(0, 2).join(' '))} ${r.c.cur.o ? '−' + Math.round((r.c.cur.o - r.c.cur.p) / r.c.cur.o * 100) + '%' : fr2(r.c.cur.p)}</span>`).join('')}${rs.length > 2 ? `<span>+${rs.length - 2}</span>` : ''}</div></button>`;
+  }).join('');
+  $('#main').innerHTML = fav + (cards || '<div class="card muted">Încă nu ai nicio ofertă. Mergi la „Încarcă” și adaugă un catalog.</div>');
+  document.querySelectorAll('.stc').forEach(b => b.onclick = () => { S.f.store = b.dataset.store; S.f.fav = false; S.f.q = ''; viewOffers(); window.scrollTo(0, 0); });
+  const fb = $('.fvb'); if (fb) fb.onclick = () => { S.f.store = '*'; S.f.fav = true; viewOffers(); window.scrollTo(0, 0); };
+}
+function viewStore() {
+  const s = S.f.store, SO = [['scor', 'Echilibrat'], ['dens', 'Top proteină'], ['cost', 'Ieftin / proteină'], ['real', 'Reduceri']];
+  $('#main').innerHTML = `<div class="rdh"><button class="btn sm sec" id="oBack">‹ Magazine</button><div style="flex:1"><div class="nm" style="font-size:17px">${s === '*' ? '⭐ Favorite la reducere' : esc(s)}</div></div></div>
+    <input id="fQ" type="text" placeholder="Caută produs" style="width:100%;margin-bottom:8px" value="${esc(S.f.q)}">
+    <div class="chp">${SO.map(([k, t]) => `<button data-so="${k}" class="${S.f.sort === k ? 'on' : ''}">${t}</button>`).join('')}</div>
+    <div id="stat" class="muted" style="margin:8px 0 2px"></div><div id="list"></div>`;
+  $('#oBack').onclick = () => { S.f.store = ''; S.f.fav = false; viewOffers(); window.scrollTo(0, 0); };
   $('#fQ').oninput = e => { S.f.q = e.target.value; renderList(); };
-  $('#fPromo').onchange = e => { S.f.promo = e.target.checked; renderList(); };
+  document.querySelectorAll('[data-so]').forEach(b => b.onclick = () => { S.f.sort = b.dataset.so; document.querySelectorAll('[data-so]').forEach(x => x.classList.toggle('on', x === b)); renderList(); });
   renderList();
+}
+function rowHtml(r) {
+  const { x, c, id } = r, o = c.cur.o && c.cur.o > c.cur.p ? c.cur.o : null, pct = o ? Math.round((o - c.cur.p) / o * 100) : null, inB = basket.includes(id);
+  const meta = [S.f.store === '*' ? x.store : '', f1(c.dens) + ' g prot/100 kcal', c.cost30 != null ? fr2(c.cost30) + ' lei/30 g' : ''].filter(Boolean).join(' · ');
+  return `<div class="orw" data-id="${esc(id)}"><span class="oem" data-act="open">${genIcon(x)[0]}</span><div class="oin" data-act="open"><div class="onm">${favs.includes(id) ? '★ ' : ''}${esc(x.name)}</div><div class="sub">${meta}</div>${o ? `<div class="sub"><span style="color:var(--ac)">−${pct}%</span> · era ${fr2(o)}</div>` : ''}</div>
+    ${pbox(c.cur.p, !!o)}<button class="opl${inB ? ' on' : ''}" data-act="basket" aria-label="${inB ? 'Scoate din listă' : 'Adaugă în listă'}">${inB ? '✓' : '+'}</button></div>${S.det[id] ? cardHtml(r) : ''}`;
 }
 function badges(r) {
   const c = r.c, b = [];
@@ -762,20 +801,13 @@ function cardHtml(r) {
 function renderList() {
   const el = $('#list'); if (!el) return;
   const f = S.f, q = norm(f.q);
-  let rows = activeRows();
+  let rows = f.store === '*' ? activeRows().filter(r => favs.includes(r.id) && dietOk(r.x)) : okRows().filter(r => r.x.store === f.store);
   const total = rows.length;
-  rows = rows.filter(r => dietOk(r.x) && exclOk(r.x)
-    && (r.c.dens != null && r.c.dens >= (profile.minDensity || 0))
-    && (!f.store || r.x.store === f.store)
-    && (!q || norm(r.x.name).includes(q))
-    && (!f.promo || r.c.claimed != null) && (!f.fav || favs.includes(r.id)));
-  const fb = $('#favBox'), fr = activeRows().filter(r => favs.includes(r.id));
-  if (fb) fb.innerHTML = fr.length ? `<div class="card" style="border-color:#1f5a35"><div class="nm">⭐ Favoritele tale la reducere acum (${fr.length})</div>` + fr.map(r => `<div class="li"><div><div class="nm">${esc(r.x.name)}</div><div class="sub">${esc(r.x.store)} · ${f2(r.c.cur.p)} lei${r.c.real != null && r.c.real >= 5 ? ' · −' + Math.round(r.c.real) + '% vs mediană' : ''}</div>${promoTag(r.x)}</div>${plusBtn(r.id, 'plus2')}</div>`).join('') + '</div>' : '';
-  const key = { scor: r => -score(r), dens: r => -(r.c.dens == null ? -1 : r.c.dens), cost: r => r.c.cost30 == null ? 1e9 : r.c.cost30, real: r => -(r.c.real == null ? -999 : r.c.real) }[f.sort];
+  rows = rows.filter(r => !q || norm(r.x.name).includes(q));
+  const key = { scor: r => -score(r), dens: r => -(r.c.dens == null ? -1 : r.c.dens), cost: r => r.c.cost30 == null ? 1e9 : r.c.cost30, real: r => -(r.c.real == null ? (r.c.claimed != null ? r.c.claimed - 50 : -999) : r.c.real) }[f.sort] || (r => -score(r));
   rows.sort((a, b) => key(a) - key(b));
-  $('#stat').textContent = total ? `${rows.length} din ${total} oferte active (prag ≥ ${profile.minDensity} g prot/100 kcal, dietă: ${profile.diet})` : '';
-  if (!total) { el.innerHTML = '<div class="card muted">Încă nu ai nicio ofertă. Mergi la „Încarcă” și adaugă un catalog.</div>'; return; }
-  el.innerHTML = rows.slice(0, 80).map(cardHtml).join('') || '<div class="card muted">Nimic de afișat cu filtrele curente.</div>';
+  $('#stat').textContent = total ? `${rows.length} oferte` + (f.store === '*' ? '' : ` · prag ≥ ${profile.minDensity} g prot/100 kcal`) : '';
+  el.innerHTML = rows.slice(0, 120).map(rowHtml).join('') || '<div class="card muted">Nimic de afișat.</div>';
 }
 function catGroups() {
   const g = {};
@@ -1051,7 +1083,7 @@ document.addEventListener('click', async e => {
   const nb = e.target.closest('#nav button');
   const gt = e.target.closest('[data-goto]');
   if (gt) { S.tab = gt.dataset.goto; render(); window.scrollTo(0, 0); return; }
-  if (nb) { S.tab = nb.dataset.tab; render(); window.scrollTo(0, 0); return; }
+  if (nb) { if (nb.dataset.tab === 'offers' && S.tab === 'offers') { S.f.store = ''; S.f.fav = false; } S.tab = nb.dataset.tab; render(); window.scrollTo(0, 0); return; }
   const ga = e.target.closest('[data-gact]');
   if (ga) {
     const gk = ga.dataset.gk, g = basketGroups().find(x => x.gk === gk); if (!g) return;
@@ -1075,6 +1107,7 @@ document.addEventListener('click', async e => {
     if (S.tab === 'basket') viewBasket();
     else if (S.tab === 'catalog') { syncBasketBtns(id); const x = products[id]; if (x) toast((basket.includes(id) ? 'Adăugat: ' : 'Scos: ') + x.name); }
     else renderList();
+  } else if (act === 'open') { S.det[id] = !S.det[id]; renderList();
   } else if (act === 'done') {
     { const cur = bsnap[id] || snapOf(id); if (cur) { bsnap[id] = { ...cur, done: !cur.done }; write(() => col.doc('basket').set({ items: basket, snap: bsnap })); viewBasket(); } }
   } else if (act === 'fav') {
