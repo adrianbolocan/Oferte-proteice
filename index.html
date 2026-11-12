@@ -547,6 +547,7 @@ async function processBatch(js) {
 const PAR = 2, BATCH = 4;
 const TBATCH = 8;
 const textPrompt = store => `Primești textul extras din paginile unui catalog de promoții ${store} (România). Fiecare rând: ID [x,y] text — x,y = poziția pe pagină în procente (0–100, y de sus în jos). Prețurile pot fi sparte în bucăți apropiate (ex: "4" și "99" = 4.99), lângă denumire sau sub ea; folosește pozițiile ca să le asociezi corect.
+Paginile sunt adesea împărțite în coloane/casete: rândurile sunt grupate pe zone ("--- zona N ---"). Un preț aparține produsului din ACEEAȘI zonă (x apropiat), niciodată celui din coloana vecină. Verifică: dacă lângă produs scrie „1 kg = X lei” sau un gramaj, prețul trebuie să fie coerent cu el.
 Extrage TOATE produsele cu preț (alimentare și nealimentare). Răspunde STRICT cu un array JSON; fiecare element:
 {"l":"ID-ul rândului cu denumirea produsului","n":"denumire completă","c":"denumire generică scurtă, fără brand și gramaj, dar cu varianta/aroma dacă există (ex: detergent vase lămâie)","b":"brand sau ''","g":greutate netă în g (litri×1000, ouă 60 g/buc; null dacă nu se aplică),"p":preț promoțional lei,"o":preț vechi/barat sau null,"k":kcal/100 g estimat (null la nealimentare),"pr":proteină g/100 g,"f":grăsime g/100 g,"t":[din "carne","pește","lactate","ouă","vegetal","nealimentar"],"ct":"alimente" | "curatenie" (detergenți, produse de curățenie și igienizare a casei) | "altele" (restul nealimentarelor)}
 Reguli: preț per kg fără ambalaj fix → g=1000 și p=prețul/kg. La "2+1" sau "-50% la al doilea" folosește prețul efectiv per bucată doar dacă e clar. Nu inventa produse. Dacă nu sunt produse: [].`;
@@ -576,7 +577,29 @@ async function pageLines(pg) {
     const l = lines.find(l => Math.abs(l.y - it.y) < 0.006 && it.x - l.x1 < 0.03 && it.x >= l.x - 0.005);
     if (l) { l.s += ' ' + it.s; l.x1 = Math.max(l.x1, it.x1); } else lines.push({ ...it });
   }
-  return lines;
+  return colOrder(lines);
+}
+function colOrder(lines) {
+  const zone = (ls, depth) => {
+    if (depth > 2 || ls.length < 6) return [ls];
+    const cov = new Array(102).fill(0);
+    for (const l of ls) for (let k = Math.max(0, Math.floor(l.x * 100) + 1); k <= Math.min(100, Math.ceil(l.x1 * 100) - 1); k++) cov[k]++;
+    const lo = Math.min(...ls.map(l => l.x)) * 100, hi = Math.max(...ls.map(l => l.x1)) * 100;
+    let best = -1, bw = 0;
+    for (let k = Math.ceil(lo + (hi - lo) * 0.2); k <= Math.floor(lo + (hi - lo) * 0.8); k++) {
+      if (cov[k] > 1) continue; let w = 0; while (k + w <= 100 && cov[k + w] <= 1) w++;
+      if (w > bw) { bw = w; best = k + w / 2; } k += w;
+    }
+    if (best < 0) return [ls];
+    const g = best / 100, a = ls.filter(l => l.x1 <= g + 0.01), b = ls.filter(l => l.x >= g - 0.01), mid = ls.filter(l => !a.includes(l) && !b.includes(l));
+    if (a.length < 3 || b.length < 3) return [ls];
+    return [...(mid.length ? [mid] : []), ...zone(a, depth + 1), ...zone(b, depth + 1)];
+  };
+  const zs = zone(lines, 0);
+  if (zs.length < 2) return lines;
+  const out = [];
+  zs.forEach((z, i) => { out.push({ s: '--- zona ' + (i + 1) + ' ---', x: z[0].x, y: z[0].y, x1: z[0].x, sep: true }); z.sort((p, q) => p.y - q.y || p.x - q.x).forEach(l => out.push(l)); });
+  return out;
 }
 async function pageImgs(pg) {
   const vp = pg.getViewport({ scale: 1 }), W = vp.width, H = vp.height, O = window.pdfjsLib.OPS, ol = await pg.getOperatorList();
