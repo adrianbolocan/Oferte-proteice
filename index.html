@@ -94,7 +94,7 @@ nav .midc svg{width:22px;height:22px}
 .sec i{font-style:normal;font-weight:500;letter-spacing:0;text-transform:none;color:#7c8494}
 .g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:10px}
 .tl{background:var(--bg);border:1px solid var(--line);border-radius:16px;overflow:hidden;position:relative;display:flex;flex-direction:column}
-.tl .im{position:relative;aspect-ratio:4/3;overflow:hidden;background:#1c2330;display:flex;align-items:center;justify-content:center;font-size:40px;cursor:pointer}
+.tl .im{position:relative;aspect-ratio:16/10;overflow:hidden;background:#1c2330;display:flex;align-items:center;justify-content:center;font-size:52px;cursor:pointer}
 .tl .im img{position:absolute;left:0;top:0;max-width:none;transform-origin:0 0}
 .tl .ck{position:absolute;top:8px;right:8px;width:30px;height:30px;border-radius:50%;background:rgba(15,17,21,.85);border:2px solid #e8eaed;color:#06220f;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;pointer-events:none}
 .tl.dn .ck{background:var(--ac);border-color:var(--ac)}
@@ -105,7 +105,7 @@ nav .midc svg{width:22px;height:22px}
 .tl .pr b{font-size:18px;font-weight:700;letter-spacing:-.3px}
 .tl .pr s{font-size:12px;color:#6b7280}
 .tl .mt{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--mut);margin-top:2px;min-height:22px}
-.tl.dn .im img,.tl.dn .bd{opacity:.45}
+.tl.dn .im,.tl.dn .bd{opacity:.45}
 .tl.dn .nm{text-decoration:line-through}
 .ph{width:64px;height:64px;border-radius:12px;background:#1c2330;display:flex;align-items:center;justify-content:center;font-size:26px;flex:none}
 .chk{width:30px;height:30px;border-radius:50%;border:2px solid #4b5160;background:transparent;color:#06220f;font-size:16px;font-weight:700;padding:0;flex:none;line-height:1}
@@ -865,22 +865,39 @@ function thumbHtml(e) {
   else { rw = Math.max(0.12, b[2] - b[0]); x1 = b[0]; y1 = b[1]; }
   return `<div style="position:relative;width:64px;height:64px;overflow:hidden;border-radius:12px;background:#0f1115;flex:none"><img data-asset="${esc(e.asset)}" alt="" style="position:absolute;left:0;top:0;width:${64 / rw}px;max-width:none;transform-origin:0 0;transform:translate(${-x1 * 100}%,${-y1 * 100}%)"></div>`;
 }
+const GEN = [
+  ['🍗', '#3a2a1a', 'pui|curcan|pasare|pulpe|aripi|piept'], ['🥩', '#3a1d1d', 'porc|vita|cotlet|ceafa|muschi|antricot|carne|miel|tocat|mici|friptura|coaste'],
+  ['🥓', '#3a2222', 'bacon|sunca|salam|carnat|crenvur|parizer|kaiser|jambon|prosciutto|mezel|pastrama|slanin'], ['🐟', '#16303a', 'peste|somon|ton |macrou|hering|pastrav|cod |sardin|creveti|fructe de mare|icre|surimi'],
+  ['🥚', '#3a331a', 'oua|ou '], ['🧀', '#3a321a', 'branza|cascaval|telemea|mozzarella|parmezan|cheddar|gouda|feta|ricotta|urda|cas '],
+  ['🥛', '#1f2b3a', 'lapte|iaurt|kefir|sana|smantana|skyr|frisca|chefir|lactate'], ['🧈', '#3a341c', 'unt|margarina'],
+  ['🍞', '#3a2c1a', 'paine|bagheta|chifl|covrig|lipie|toast|franzela|croissant|cozonac|corn '], ['🍝', '#3a2f1a', 'paste|spaghet|penne|fusilli|macaroane|taitei|lasagna|noodles'],
+  ['🍚', '#2a2f33', 'orez|bulgur|cuscus|quinoa|hrisca|malai|faina|gris|ovaz|cereale|musli|fulgi'], ['🫘', '#33241c', 'fasole|linte|naut|mazare|soia|tofu'],
+  ['🥜', '#33281a', 'nuci|alune|migdale|caju|fistic|arahide|seminte|unt de arahide'], ['🥔', '#33291c', 'cartof'],
+  ['🍅', '#3a1f1c', 'rosii|tomate|ketchup|bulion|pasta de tomate'], ['🥬', '#1c3322', 'salata|varza|spanac|legume|castravet|dovlec|ardei|vinete|ceapa|usturoi|morcov|broccoli|conopida|ciuperci|verdeata|praz|sfecla|ridichi'],
+  ['🍎', '#3a1c22', 'mere|pere|fruct|banane|portocal|lamai|struguri|capsuni|clementin|mandarin|kiwi|prune|piersic|afine|zmeura|pepene|ananas|mango|avocado|rodi'],
+  ['🍫', '#2e2018', 'ciocolat|napolitan|biscuit|bomboane|praline|baton|prajitur|tort|desert|inghetat|dulc|jeleu|vafe|nutella|croissant'], ['🍯', '#3a2e14', 'miere|gem|dulceata|zahar|sirop'],
+  ['🥫', '#2b2f36', 'conserv|pate|zacusca|muraturi|masline|porumb|borcan'], ['🫒', '#27301a', 'ulei|otet|mustar|maionez|sos |condiment|sare|piper|boia'],
+  ['🍕', '#3a261a', 'pizza|burger|snitel|nuggets|congelat|lasagna|gata preparat'], ['🥨', '#33291a', 'chips|snack|pufulet|sticks|popcorn|crackers|sarate'],
+  ['☕', '#2e241c', 'cafea|espresso|cappuccino|ness|ceai'], ['🍷', '#331a26', 'vin |vin$|sampanie|spumant|prosecco'], ['🍺', '#3a2f14', 'bere'],
+  ['🥃', '#33261a', 'whisk|vodca|votca|rom |gin |lichior|tuica|palinca|coniac|brandy|tequila'], ['🥤', '#1c2e3a', 'suc|apa |apa$|cola|pepsi|limonada|energizant|nectar|bautur|minerala|fanta|sprite'],
+  ['💪', '#1c3324', 'protein|whey|creatina|supliment|vitamin'],
+  ['🧻', '#262b36', 'hartie|servetel|prosop|batiste|scutec|absorbant'], ['🧴', '#1f2d3a', 'sampon|gel de dus|sapun|crema|deodorant|lotiune|balsam de par|pasta de dinti|cosmetic|parfum|lame|periuta'],
+  ['🧼', '#1c3036', 'detergent|balsam|dedurizant|inalbitor|vase|fairy|degresant|dezinfectant|curat|burete|lavete|saci|pastile|capsule de spalat|odorizant'],
+  ['🐾', '#2e2a1f', 'caini|pisici|hrana pentru|animale|pet '], ['🌸', '#33202e', 'flori|planta|ghiveci|buchet|trandafir|orhidee|paulia|brad'], ['🧸', '#33271f', 'jucari|joc |lego|papus|copii'],
+  ['👕', '#22283a', 'tricou|pantalon|sosete|pijama|geaca|pulover|incaltaminte|papuci|lenjerie|haine|bluza|ghete'], ['🍳', '#2a2d33', 'tigaie|oala|cratita|vesela|tacamuri|pahar|farfuri|cutit|bucatarie'],
+  ['🔌', '#22262e', 'electr|baterii|bec|cablu|aspirator|mixer|blender|fier de calcat|televizor|telefon|casti'], ['🛠️', '#262a2e', 'unelte|surubelnita|bormasina|scule|gradina|vopsea']
+];
+const GEN_RX = GEN.map(g => [g[0], g[1], new RegExp('(^| )(' + g[2] + ')')]);
+function genIcon(x) {
+  const n = ' ' + norm((x.canonical || '') + ' ' + (x.name || '')).replace(/[^a-z0-9]+/g, ' ') + ' ';
+  for (const g of GEN_RX) if (g[2].test(n)) return g;
+  return { alimente: ['🛒', '#1c2330'], curatenie: ['🧼', '#1c3036'], altele: ['📦', '#262a33'] }[catOf(x)];
+}
 function itemHtml(r, pidx) {
   const s = sn(r.id), dn = !!(bsnap[r.id] && bsnap[r.id].done), p = bp(r), o = s.o && s.o > p ? s.o : null, pct = o ? Math.round((o - p) / o * 100) : null;
-  const ico = { alimente: '🥩', curatenie: '🧼', altele: '📦' }[catOf(r.x)], e = pidx[r.id];
-  let img = ico;
-  if (e) {
-    const b = e.b, line = (b[3] - b[1]) < 0.04; let x1, y1, rw;
-    if (line) { rw = 0.46; x1 = Math.min(Math.max(b[0] - 0.02, 0), 1 - rw); y1 = Math.max(0, b[1] - 0.26); }
-    else { rw = Math.max(0.12, b[2] - b[0]); x1 = b[0]; y1 = b[1]; }
-    img = `<img data-asset="${esc(e.asset)}" alt="" style="width:${100 / rw}%;transform:translate(${-x1 * 100}%,${-y1 * 100}%)">`;
-    if (e.ph) {
-      const q = e.ph, ar = e.ar || 1.414, bw = q[2] - q[0], bh = (q[3] - q[1]) * ar, sc = Math.min(1 / bw, 0.75 / bh);
-      img = `<img data-asset="${esc(e.asset)}" alt="" style="width:${sc * 100}%;left:${((1 - bw * sc) / 2 - q[0] * sc) * 100}%;top:${((0.75 - bh * sc) / 2 - q[1] * ar * sc) / 0.75 * 100}%">`;
-    }
-  }
+  const gi = genIcon(r.x), img = gi[0];
   const meta = [r.x.weight_g ? Math.round(r.x.weight_g) + ' g' : '', r.c.cur.p !== p ? 'acum ' + f2(r.c.cur.p) : ''].filter(Boolean).join(' · ');
-  return `<div class="tl ${dn ? 'dn' : ''}" data-id="${esc(r.id)}"><div class="im" data-act="done" role="button" aria-label="Bifează">${img}</div>
+  return `<div class="tl ${dn ? 'dn' : ''}" data-id="${esc(r.id)}"><div class="im" data-act="done" role="button" aria-label="Bifează" style="background:${gi[1]}">${img}</div>
     ${pct ? `<span class="off">−${pct}%</span>` : ''}<span class="ck">${dn ? '✓' : ''}</span>
     <div class="bd"><div class="nm">${esc(r.x.name)}</div><div class="pr"><b>${f2(p)} lei</b>${o ? `<s>${f2(o)}</s>` : ''}</div>
     <div class="mt"><span>${meta}</span><button class="xb" data-act="basket" aria-label="Scoate din listă">✕</button></div></div></div>`;
