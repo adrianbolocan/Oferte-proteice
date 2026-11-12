@@ -107,16 +107,21 @@ nav .midc svg{width:22px;height:22px}
 .sec::after{content:"";flex:1;height:1px;background:var(--line)}
 .sec i{font-style:normal;font-weight:500;letter-spacing:0;text-transform:none;color:#7c8494}
 .g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}
-.tl{background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:10px 10px 8px;display:flex;flex-direction:column;position:relative}
-.tl .hd{display:flex;justify-content:space-between;align-items:flex-start}
+.tl{background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:10px 10px 8px;display:flex;flex-direction:column;position:relative;overflow:hidden}
+.tl .hd{display:flex;align-items:center;gap:8px}
 .tl .em{font-size:24px;line-height:1}
 .tl .ck{width:22px;height:22px;border-radius:50%;border:1.5px solid #6b7280;background:none;color:#06220f;font-size:13px;font-weight:700;padding:0;display:flex;align-items:center;justify-content:center}
 .tl.dn .ck{background:var(--ac);border-color:var(--ac)}
 .tl .nm{font-size:13px;font-weight:500;line-height:1.3;margin:6px 0 8px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.tl .pz{margin-top:auto;display:flex;align-items:baseline;gap:4px}
-.tl .pz b{font-size:17px;font-weight:600;letter-spacing:-.2px;font-variant-numeric:tabular-nums}
-.tl .pz small{font-size:11px;color:var(--mut)}
-.tl .pz em{font-style:normal;font-size:11px;color:var(--ac);margin-left:auto}
+.tl .pz{margin-top:auto;padding-top:8px;display:flex;align-items:flex-end;gap:7px}
+.tl .bx{background:var(--ac);color:#06220f;padding:3px 9px 2px;transform:skewX(-10deg);line-height:1;display:inline-block;margin-left:2px}
+.tl .bx.n{background:#e8eaee}
+.tl .bx span{display:inline-block;transform:skewX(10deg);font-size:22px;font-weight:700;letter-spacing:-.5px;font-variant-numeric:tabular-nums}
+.tl .bx sup{font-size:11px;letter-spacing:0;margin-left:1px}
+.tl .pz s{font-size:11px;color:var(--mut)}
+.tl .rb{position:absolute;top:13px;right:-30px;width:104px;transform:rotate(40deg);background:var(--ac);color:#06220f;text-align:center;font-size:11px;font-weight:700;padding:2px 0;pointer-events:none}
+.tl .ft{margin-top:5px}
+.tl.dn .rb,.tl.dn .bx{filter:grayscale(1);opacity:.45}
 .tl .ft{display:flex;justify-content:space-between;align-items:center;gap:4px;font-size:11px;color:var(--mut);font-variant-numeric:tabular-nums}
 .tl .ft .xb{font-size:12px;padding:0 0 0 6px}
 .tl.dn .em,.tl.dn .nm,.tl.dn .pz{opacity:.45}
@@ -934,10 +939,10 @@ function itemHtml(r, pidx) {
   const g = +r.x.weight_g, liq = /(^|[^a-z])(\d+([.,]\d+)?\s?(ml|l)\b|litr)/i.test(r.x.name || '');
   const qty = g ? (liq ? (g >= 1000 ? +(g / 1000).toFixed(2) + ' l' : Math.round(g) + ' ml').replace('.', ',') : (g >= 1000 ? +(g / 1000).toFixed(2) + ' kg' : Math.round(g) + ' g').replace('.', ',')) : '';
   const fr = v => f2(v).replace('.', ','), up = g && p ? fr(p / g * 1000) + ' lei/' + (liq ? 'l' : 'kg') : '';
-  const sub = [o ? `<s>${fr(o)}</s>` : qty, up].filter(Boolean).join(' · ');
-  return `<div class="tl ${dn ? 'dn' : ''}" data-id="${esc(r.id)}"><div class="hd"><span class="em">${genIcon(r.x)[0]}</span><button class="ck" data-act="done" aria-label="Bifează">${dn ? '✓' : ''}</button></div>
-    <div class="nm">${esc(r.x.name)}</div>
-    <div class="pz"><b>${fr(p)}</b><small>lei</small>${pct ? `<em>−${pct}%</em>` : ''}</div>
+  const sub = [qty, up].filter(Boolean).join(' · '), [pi, pd] = f2(p).split('.');
+  return `<div class="tl ${dn ? 'dn' : ''}" data-id="${esc(r.id)}">${pct ? `<span class="rb">−${pct}%</span>` : ''}<div class="hd"><button class="ck" data-act="done" aria-label="Bifează">${dn ? '✓' : ''}</button><span class="em">${genIcon(r.x)[0]}</span></div>
+    <div class="nm"${pct ? ' style="padding-right:14px"' : ''}>${esc(r.x.name)}</div>
+    <div class="pz"><span class="bx${o ? '' : ' n'}"><span>${pi}<sup>${pd}</sup></span></span>${o ? `<s>${fr(o)}</s>` : ''}</div>
     <div class="ft"><span>${sub}</span><button class="xb" data-act="basket" aria-label="Scoate din listă">✕</button></div></div>`;
 }
 function listText(g) {
